@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <openssl/bn.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -30,6 +29,7 @@
 #include "filesystem.h"
 #include "utils.h"
 #include "keygen.h"
+#include "unistdwrapper.h"
 
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L

@@ -21,12 +21,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "docopt.h"
 #include "filesystem.h"
 #include "utils.h"
 #include "unpack.h"
+#include "unistdwrapper.h"
 
 
 bool is_garbage(struct header *header) {

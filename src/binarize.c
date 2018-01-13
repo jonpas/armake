@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -38,6 +37,7 @@
 #include "p3d.h"
 #include "binarize.h"
 #include "utils.h"
+#include "unistdwrapper.h"
 
 
 bool warned_bi_not_found = false;

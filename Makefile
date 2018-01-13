@@ -2,7 +2,6 @@
 %.c: %.y
 %.c: %.l
 
-VERSION = 0.5.1
 DESTDIR =
 BIN = bin
 SRC = src
@@ -27,7 +26,7 @@ $(BIN)/armake: \
         $(CLIBS)
 
 $(SRC)/rapify.tab.c: $(SRC)/rapify.y
-    @echo " BISN $(SRC)/rapify.y"
+    @echo " BISON $(SRC)/rapify.y"
     @$(BISON) -o $(SRC)/rapify.tab.c --defines=$(SRC)/rapify.tab.h $(SRC)/rapify.y
 
 $(SRC)/rapify.yy.c: $(SRC)/rapify.l $(SRC)/rapify.tab.c

@@ -32,6 +32,7 @@
 #include "filesystem.h"
 #include "keygen.h"
 #include "sign.h"
+#include "version.h"
 
 
 int main(int argc, char *argv[]) {

@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
 
 #ifdef _WIN32
@@ -37,6 +36,7 @@
 #include "filesystem.h"
 #include "utils.h"
 #include "preprocess.h"
+#include "unistdwrapper.h"
 
 
 #define IS_MACRO_CHAR(x) ( (x) == '_' || \

@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #ifdef _WIN32
@@ -32,6 +31,7 @@
 #include "rapify.h"
 #include "utils.h"
 #include "derapify.h"
+#include "unistdwrapper.h"
 
 
 int skip_array(FILE *f) {

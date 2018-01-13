@@ -22,12 +22,12 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #include "docopt.h"
 #include "filesystem.h"
 #include "utils.h"
+#include "unistdwrapper.h"
 
 
 #ifdef _WIN32
@@ -342,12 +342,13 @@ void trim_leading(char *string, size_t buffsize) {
      * Trims leading tabs and spaces on the string.
      */
 
-    char tmp[buffsize];
+    char *tmp = malloc(sizeof(*tmp) * buffsize);
     char *ptr = tmp;
     strncpy(tmp, string, buffsize);
     while (*ptr == ' ' || *ptr == '\t')
         ptr++;
     strncpy(string, ptr, buffsize - (ptr - tmp));
+    free(tmp);
 }
 
 

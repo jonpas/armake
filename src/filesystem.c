@@ -17,7 +17,6 @@
  */
 
 
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -38,6 +37,7 @@
 #endif
 
 #include "filesystem.h"
+#include "unistdwrapper.h"
 
 
 #ifdef _WIN32
@@ -258,7 +258,7 @@ int copy_file(char *source, char *target) {
      */
 
     // Create the containing folder
-    char containing[strlen(target) + 1];
+    char *containing = malloc(sizeof(*containing) * (strlen(target) + 1));
     int lastsep = 0;
     int i;
     for (i = 0; i < strlen(target); i++) {
@@ -268,8 +268,12 @@ int copy_file(char *source, char *target) {
     strcpy(containing, target);
     containing[lastsep] = 0;
 
-    if (create_folders(containing))
-        return -1;
+	if (create_folders(containing))
+	{
+		free(containing);
+		return -1;
+	}
+    free(containing);
 
 #ifdef _WIN32
 
@@ -463,12 +467,14 @@ int copy_callback(char *source_root, char *source, char *target_root) {
     if (strstr(source, source_root) != source)
         return -1;
 
-    char target[strlen(source) + strlen(target_root) + 1]; // assume worst case
+    char *target = malloc(sizeof(*target)* (strlen(source) + strlen(target_root) + 1 + 1)); // assume worst case
     target[0] = 0;
     strcat(target, target_root);
     strcat(target, source + strlen(source_root));
 
-    return copy_file(source, target);
+    int status = copy_file(source, target);
+    free(target);
+    return status;
 }
 
 

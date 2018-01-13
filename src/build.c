@@ -21,19 +21,19 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-#include "sha1.h"
+#include "../lib/sha1.h"
 #include "docopt.h"
 #include "binarize.h"
 #include "filesystem.h"
 #include "utils.h"
 #include "sign.h"
 #include "build.h"
+#include "unistdwrapper.h"
 
 
 int binarize_callback(char *root, char *source, char *junk) {

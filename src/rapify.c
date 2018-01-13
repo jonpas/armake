@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <time.h>
 
 #ifdef _WIN32
@@ -35,6 +34,7 @@
 #include "preprocess.h"
 #include "rapify.h"
 #include "rapify.tab.h"
+#include "unistdwrapper.h"
 
 
 struct definitions *new_definitions() {

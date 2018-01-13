@@ -186,8 +186,10 @@ struct odol_selection {
     uint8_t *vertex_weights;
 };
 
+/*
 struct odol_frame {
 };
+*/
 
 struct odol_vertexboneref {
     uint32_t num_bones;

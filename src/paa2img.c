@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #ifdef _WIN32
@@ -33,12 +32,13 @@
 #endif
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-#include "minilzo.h"
+#include "../lib/stb_image_write.h"
+#include "../lib/minilzo.h"
 
 #include "docopt.h"
 #include "utils.h"
 #include "paa2img.h"
+#include "unistdwrapper.h"
 
 
 int dxt12img(unsigned char *input, unsigned char *output, int width, int height) {

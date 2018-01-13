@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #ifdef _WIN32
@@ -39,6 +38,7 @@
 #include "vector.h"
 #include "matrix.h"
 #include "p3d.h"
+#include "unistdwrapper.h"
 
 
 int read_lods(FILE *f_source, struct mlod_lod *mlod_lods, uint32_t num_lods) {

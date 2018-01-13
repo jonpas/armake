@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #include "filesystem.h"
@@ -29,6 +28,7 @@
 #include "utils.h"
 #include "derapify.h"
 #include "model_config.h"
+#include "unistdwrapper.h"
 
 
 int read_animations(FILE *f, char *config_path, struct skeleton *skeleton) {
@@ -309,7 +309,7 @@ int read_model_config(char *path, struct skeleton *skeleton) {
     char rapified_path[2048];
     char config_path[2048];
     char model_name[512];
-    char bones[MAXBONES * 2][512] = {};
+    char bones[MAXBONES * 2][512] = {0};
     char buffer[512];
     struct bone *bones_tmp;
 

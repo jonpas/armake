@@ -36,6 +36,7 @@ bool tmp;
 
 #define YY_NO_INPUT
 #define YY_NO_UNPUT
+#define YY_NO_UNISTD_H
 
 #define YY_USER_ACTION \
     yylloc.first_line = yylloc.last_line = yylineno;

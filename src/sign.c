@@ -21,15 +21,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <openssl/bn.h>
 
-#include "sha1.h"
+#include "../lib/sha1.h"
 #include "docopt.h"
 #include "filesystem.h"
 #include "utils.h"
 #include "keygen.h"
 #include "sign.h"
+#include "unistdwrapper.h"
 
 
 void pad_hash(unsigned char *hash, char *buffer, size_t buffsize) {

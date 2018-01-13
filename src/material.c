@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #include "docopt.h"
@@ -32,6 +31,7 @@
 #include "derapify.h"
 #include "matrix.h"
 #include "material.h"
+#include "unistdwrapper.h"
 
 
 const struct shader_ref pixelshaders[30] = {
