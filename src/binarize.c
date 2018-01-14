@@ -44,11 +44,6 @@ bool warned_bi_not_found = false;
 
 
 #ifdef _WIN32
-bool file_exists(char *path) {
-    unsigned long attrs = GetFileAttributes(path);
-    return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
-}
-
 
 int attempt_bis_binarize(char *source, char *target) {
     /*
@@ -68,13 +63,17 @@ int attempt_bis_binarize(char *source, char *target) {
     int i;
     int j;
     int k;
-    char command[2048];
+	wchar_t wc_binarize[2048];
+	wchar_t wc_command[2048];
     char temp[2048];
     char tempfolder[2048];
     char filename[2048];
     char *dependencies[MAXTEXTURES];
     FILE *f_source;
     struct mlod_lod *mlod_lods;
+
+	wchar_t wc_source[2048];
+	wchar_t wc_temp[2048];
 
     current_operation = OP_P3D;
     strcpy(current_target, source);
@@ -89,16 +88,16 @@ int attempt_bis_binarize(char *source, char *target) {
         target[i] = (target[i] == '/') ? '\\' : target[i];
 
     // Find binarize.exe
-    buffsize = sizeof(command);
-    success = RegGetValue(HKEY_CURRENT_USER, "Software\\Valve\\Steam", "SteamPath",
-            RRF_RT_ANY, NULL, command, &buffsize);
+    buffsize = sizeof(wc_binarize);
+    success = RegGetValue(HKEY_CURRENT_USER, L"Software\\Valve\\Steam", L"SteamPath",
+            RRF_RT_ANY, NULL, wc_binarize, &buffsize);
 
     if (success != ERROR_SUCCESS)
         return -2;
 
-    strcat(command, "/steamapps/common/Arma 3 Tools/Binarize/binarize.exe");
+	wcscat(wc_binarize, L"/steamapps/common/Arma 3 Tools/Binarize/binarize.exe");
 
-    if (!file_exists(command))
+    if (!wc_file_exists(wc_binarize))
         return -3;
 
     // Read P3D and create a list of required files
@@ -175,7 +174,9 @@ int attempt_bis_binarize(char *source, char *target) {
     strcpy(filename, tempfolder);
     strcat(filename, temp);
 
-    GetFullPathName(source, 2048, temp, NULL);
+	mbstowcs(wc_source, source, 2048);
+    GetFullPathName(wc_source, 2048, wc_temp, NULL);
+	wcstombs(temp, wc_temp, 2048);
 
     if (copy_file(temp, filename)) {
         errorf("Failed to copy %s to temp folder.\n", temp);
@@ -221,27 +222,33 @@ int attempt_bis_binarize(char *source, char *target) {
     }
 
     // Call binarize.exe
-    strcpy(temp, command);
-    sprintf(command, "\"%s\"", temp);
+	wchar_t wc_target[2048];
+	mbstowcs(wc_target, target, 2048);
+	GetFullPathName(wc_target, 2048, wc_temp, NULL);
+	wcstombs(temp, wc_temp, 2048);
+	*(strrchr(temp, PATHSEP)) = 0;
 
-    strcat(command, " -norecurse -always -silent -maxProcesses=0 ");
-    strcat(command, tempfolder);
-    strcat(command, " ");
-    GetFullPathName(target, 2048, temp, NULL);
-    *(strrchr(temp, PATHSEP)) = 0;
-    strcat(command, temp);
+	if (wcslens(wc_binpath) <= 0)
+		swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -textures=%ls %ls %ls",
+			wc_binarize, wc_temp, wc_temp, wc_temp);
+	else
+		swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -binPath=%ls -textures=%ls %ls %ls",
+			wc_binarize, wc_binpath, wc_temp, wc_temp, wc_temp);
 
-    if (getenv("BIOUTPUT"))
-        debugf("cmdline: %s\n", command);
+	if (getenv("BIOUTPUT")) {
+		char command[2048];
+		wcstombs(command, wc_command, 2048);
+		debugf("cmdline: %s\n", command);
+	}
 
     if (!getenv("BIOUTPUT")) {
         secattr.lpSecurityDescriptor = NULL;
         secattr.bInheritHandle = TRUE;
-        info.hStdOutput = info.hStdError = CreateFile("NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
+        info.hStdOutput = info.hStdError = CreateFile(L"NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-    if (CreateProcess(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo)) {
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);

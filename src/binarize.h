@@ -19,8 +19,13 @@
 #pragma once
 
 
+
 #include "docopt.h"
 
+#ifdef _WIN32
+wchar_t wc_binarize[2048];
+wchar_t wc_binpath[2048];
+#endif
 
 int binarize(char *source, char *target);
 

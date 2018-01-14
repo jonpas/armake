@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 
 #ifdef _WIN32
 #define PATHSEP '\\'
@@ -30,7 +31,15 @@
 #endif
 
 
+#define strlens(s) (s==NULL?0:strlen(s))
 #ifdef _WIN32
+#define wcslens(s) (s==NULL?0:wcslen(s))
+#endif
+
+
+#ifdef _WIN32
+bool file_exists(char *path);
+bool wc_file_exists(wchar_t *wc_path);
 size_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 

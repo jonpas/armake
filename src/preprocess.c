@@ -546,28 +546,41 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
 
     WIN32_FIND_DATA file;
     HANDLE handle = NULL;
-    char mask[2048];
+	wchar_t wc_cwd[2048];
+	mbstowcs(wc_cwd, cwd, 2048);
 
-    GetFullPathName(includefolder, 2048, includefolder, NULL);
 
-    GetFullPathName(cwd, 2048, mask, NULL);
-    sprintf(mask, "%s\\*", mask);
 
-    handle = FindFirstFile(mask, &file);
+	wchar_t wc_includefolder[2048];
+	mbstowcs(wc_includefolder, includefolder, 2048);
+
+	wchar_t wc_includefolder_full[2048];
+    GetFullPathName(wc_includefolder, 2048, wc_includefolder_full, NULL);
+
+	wchar_t wc_mask[2048];
+    GetFullPathName(wc_cwd, 2048, wc_mask, NULL);
+	swprintf(wc_mask, 2048, L"%s\\*", wc_mask);
+
+    handle = FindFirstFile(wc_mask, &file);
     if (handle == INVALID_HANDLE_VALUE)
         return 1;
 
     do {
-        if (strcmp(file.cFileName, ".") == 0 || strcmp(file.cFileName, "..") == 0)
+        if (wcscmp(file.cFileName, L".") == 0 || wcscmp(file.cFileName, L"..") == 0)
             continue;
 
-        GetFullPathName(cwd, 2048, mask, NULL);
-        sprintf(mask, "%s\\%s", mask, file.cFileName);
+        GetFullPathName(wc_cwd, 2048, wc_mask, NULL);
+		swprintf(wc_mask, 2048, L"%s\\%s", wc_mask, file.cFileName);
+
+		char mask[2048];
+		wcstombs(mask, wc_mask, 2048);
         if (file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             if (!find_file_helper(includepath, origin, includefolder, actualpath, mask))
                 return 0;
         } else {
-            if (strcmp(filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder)) {
+			wchar_t wc_filename[2048];
+			mbstowcs(wc_filename, filename, 2048);
+            if (wcscmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder)) {
                 strncpy(actualpath, mask, 2048);
                 return 0;
             }
