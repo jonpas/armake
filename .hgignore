@@ -1,2 +1,5 @@
 syntax: glob
 bld/
+src/rapify.tab.c
+src/rapify.tab.h
+src/rapify.yy.c

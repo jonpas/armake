@@ -100,6 +100,10 @@ int main(int argc, char *argv[]) {
     }
 
 
+    #ifdef _WIN32
+        found_bis_binarize = check_bis_binarize();
+    #endif
+
     if (args.binarize)
         return cmd_binarize();
     if (args.build)

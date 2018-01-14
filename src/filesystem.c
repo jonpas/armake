@@ -203,10 +203,10 @@ int create_temp_folder(char *addon, char *temp_folder, size_t bufsize) {
 
 #ifdef _WIN32
     temp[0] = 0;
-    wchar_t *wc_temp = malloc(sizeof(*wc_temp) * bufsize);
-    mbstowcs(wc_temp, temp, bufsize);
-    GetTempPath(sizeof(wc_temp), wc_temp);
-    wcstombs(temp, wc_temp, bufsize);
+    wchar_t *wc_temp = malloc(sizeof(*wc_temp) * 2048);
+    mbstowcs(wc_temp, temp, 2048);
+    GetTempPath(2048, wc_temp);
+    wcstombs(temp, wc_temp, 2048);
     strcat(temp, "armake\\");
 #endif
 

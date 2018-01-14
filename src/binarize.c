@@ -45,49 +45,11 @@ bool warned_bi_not_found = false;
 
 #ifdef _WIN32
 
-int attempt_bis_binarize(char *source, char *target) {
-    /*
-     * Attempts to find and use the BI binarize.exe for binarization. If the
-     * exe is not found, a negative integer is returned. 0 is returned on
-     * success and a positive integer on failure.
-     */
-
-    extern int current_operation;
-    extern char current_target[2048];
-    SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
-    STARTUPINFO info = { sizeof(info) };
-    PROCESS_INFORMATION processInfo;
+int check_bis_binarize() {
+    // Find binarize.exe
     long unsigned buffsize;
     long success;
-    int32_t num_lods;
-    int i;
-    int j;
-    int k;
-    wchar_t wc_binarize[2048];
-    wchar_t wc_command[2048];
-    char temp[2048];
-    char tempfolder[2048];
-    char filename[2048];
-    char *dependencies[MAXTEXTURES];
-    FILE *f_source;
-    struct mlod_lod *mlod_lods;
 
-    wchar_t wc_source[2048];
-    wchar_t wc_temp[2048];
-
-    current_operation = OP_P3D;
-    strcpy(current_target, source);
-
-    if (getenv("NATIVEBIN"))
-        return -1;
-
-    for (i = 0; i < strlen(source); i++)
-        source[i] = (source[i] == '/') ? '\\' : source[i];
-
-    for (i = 0; i < strlen(target); i++)
-        target[i] = (target[i] == '/') ? '\\' : target[i];
-
-    // Find binarize.exe
     buffsize = sizeof(wc_binarize);
     success = RegGetValue(HKEY_CURRENT_USER, L"Software\\Valve\\Steam", L"SteamPath",
             RRF_RT_ANY, NULL, wc_binarize, &buffsize);
@@ -96,9 +58,25 @@ int attempt_bis_binarize(char *source, char *target) {
         return -2;
 
     wcscat(wc_binarize, L"/steamapps/common/Arma 3 Tools/Binarize/binarize.exe");
-
     if (!wc_file_exists(wc_binarize))
         return -3;
+
+    return 1;
+}
+
+int get_p3d_dependencies(char *source, char *target, char *tempfolder, wchar_t *wc_temp) {
+	wchar_t wc_source[2048];
+
+    char temp[2048];
+    char filename[2048];
+    char *dependencies[MAXTEXTURES];
+    FILE *f_source;
+    struct mlod_lod *mlod_lods;
+
+    int32_t num_lods;
+    int i;
+    int j;
+    int k;
 
     // Read P3D and create a list of required files
     f_source = fopen(source, "rb");
@@ -165,7 +143,7 @@ int attempt_bis_binarize(char *source, char *target) {
     else
         strcpy(filename, source);
 
-    if (create_temp_folder(filename, tempfolder, sizeof(tempfolder))) {
+    if (create_temp_folder(filename, tempfolder, 2048)) {
         errorf("Failed to create temp folder.\n");
         return 1;
     }
@@ -220,25 +198,73 @@ int attempt_bis_binarize(char *source, char *target) {
 
         free(dependencies[i]);
     }
+	return 0;
+}
+
+int attempt_bis_binarize(char *source, char *target) {
+    /*
+     * Attempts to find and use the BI binarize.exe for binarization. If the
+     * exe is not found, a negative integer is returned. 0 is returned on
+     * success and a positive integer on failure.
+     */
+
+    extern int current_operation;
+    extern char current_target[2048];
+    SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
+    STARTUPINFO info = { sizeof(info) };
+    PROCESS_INFORMATION processInfo;
+    long unsigned buffsize;
+    long success;
+
+    wchar_t wc_command[2048];
+	char temp[2048];
+	wchar_t wc_temp[2048];
+	char tempfolder[2048];
+	wchar_t wc_tempfolder[2048];
+
+	int i;
+
+    current_operation = OP_P3D;
+    strcpy(current_target, source);
+
+    if (getenv("NATIVEBIN"))
+        return -1;
+
+    for (i = 0; i < strlen(source); i++)
+        source[i] = (source[i] == '/') ? '\\' : source[i];
+
+    for (i = 0; i < strlen(target); i++)
+        target[i] = (target[i] == '/') ? '\\' : target[i];
+
+    if (!wc_file_exists(wc_binarize))
+        return -3;
+
+	success = get_p3d_dependencies(source, target, tempfolder, wc_temp);
+	if (success > 0)
+		return success;
 
     // Call binarize.exe
-    wchar_t wc_target[2048];
+	mbstowcs(wc_tempfolder, tempfolder, 2048);
+
+	wchar_t wc_target[2048];
     mbstowcs(wc_target, target, 2048);
     GetFullPathName(wc_target, 2048, wc_temp, NULL);
     wcstombs(temp, wc_temp, 2048);
     *(strrchr(temp, PATHSEP)) = 0;
+	mbstowcs(wc_temp, temp, 2048);
 
-    if (wcslens(wc_binpath) <= 0)
-    swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -textures=%ls %ls %ls",
-    wc_binarize, wc_temp, wc_temp, wc_temp);
-    else
-    swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -binPath=%ls -textures=%ls %ls %ls",
-    wc_binarize, wc_binpath, wc_temp, wc_temp, wc_temp);
+	if (wcslens(wc_binpath) <= 0) {
+		swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always  -maxProcesses=0 %ls %ls",
+		wc_binarize, wc_tempfolder, wc_temp);
+	} else {
+		swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -maxProcesses=0 -binPath=%ls %ls %ls",
+		wc_binarize, wc_binpath, wc_temp, wc_tempfolder, wc_temp);
+	}
 
     if (getenv("BIOUTPUT")) {
-    char command[2048];
-    wcstombs(command, wc_command, 2048);
-    debugf("cmdline: %s\n", command);
+		char command[2048];
+		wcstombs(command, wc_command, 2048);
+		debugf("cmdline: %s\n", command);
     }
 
     if (!getenv("BIOUTPUT")) {
@@ -271,7 +297,7 @@ int attempt_bis_binarize(char *source, char *target) {
 #endif
 
 
-int binarize(char *source, char *target) {
+int binarize(char *source, char *target, bool force_p3d) {
     /*
      * Binarize the given file. If source and target are identical, the target
      * is overwritten. If the source is a P3D, it is converted to ODOL. If the
@@ -279,11 +305,12 @@ int binarize(char *source, char *target) {
      *
      * If the file type is not recognized, -1 is returned. 0 is returned on
      * success and a positive integer on error.
+     *
+     * Force Option is only for when using BIS Tools to force to binarize a p3d (individually)
      */
 
     char fileext[64];
 #ifdef _WIN32
-    int success;
     extern bool warned_bi_not_found;
 #endif
 
@@ -299,9 +326,16 @@ int binarize(char *source, char *target) {
 
     if (!strcmp(fileext, ".p3d")) {
 #ifdef _WIN32
-        success = attempt_bis_binarize(source, target);
-        if (success >= 0)
-            return success;
+        if (!force_p3d) {
+            // Skip Binarize P3D, do them in Builk with BIS Tools
+            if (found_bis_binarize >= 0)
+                return 0;
+        } else {
+            // Binarize P3D (individually) i.e binarize commandline argument
+            int success = attempt_bis_binarize(source, target);
+            if (success >= 0)
+                return success;
+        }
         if (!warned_bi_not_found) {
             warningf("Failed to find BI tools, using internal binarizer.\n");
             warned_bi_not_found = true;
@@ -323,7 +357,7 @@ int cmd_binarize() {
         return 1;
     }
 
-    int success = binarize(args.source, args.target);
+    int success = binarize(args.source, args.target, true);
 
     if (success == -1) {
         errorf("File is no P3D and doesn't seem rapifiable.\n");

@@ -47,7 +47,7 @@ int binarize_callback(char *root, char *source, char *junk) {
         strcpy(target + strlen(target) - 3, "bin");
     }
 
-    success = binarize(source, target);
+    success = binarize(source, target, true);
 
     if (success > 0)
         return success * -1;
@@ -280,6 +280,7 @@ int cmd_build() {
 #endif
 
     // create and prepare temp folder
+    infof("Setting up Temp Files...\n");
     char tempfolder[1024];
     if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
         errorf("Failed to create temp folder.\n");
@@ -294,6 +295,7 @@ int cmd_build() {
     }
 
     // preprocess and binarize stuff if required
+    infof("Working, Please Wait...\n");
     char nobinpath[1024];
     char notestpath[1024];
     strcpy(nobinpath, prefixpath);
@@ -301,6 +303,7 @@ int cmd_build() {
     strcpy(nobinpath + strlen(nobinpath) - 11, "$NOBIN$");
     strcpy(notestpath + strlen(notestpath) - 11, "$NOBIN-NOTEST$");
     if (!args.packonly && access(nobinpath, F_OK) == -1 && access(notestpath, F_OK) == -1) {
+        infof("Binarizing...\n");
         if (traverse_directory(tempfolder, binarize_callback, "")) {
             current_operation = OP_BUILD;
             strcpy(current_target, args.source);
@@ -317,9 +320,7 @@ int cmd_build() {
 
         if (access(configpath, F_OK) != -1) {
 #ifdef _WIN32
-            wchar_t wc_configpath[2048];
-            mbstowcs(wc_configpath, configpath, 2048);
-            if (!DeleteFile(wc_configpath)) {
+            if (remove_file(configpath)) {
 #else
             if (remove(configpath)) {
 #endif
@@ -334,6 +335,7 @@ int cmd_build() {
     strcpy(current_target, args.source);
 
     // write header extension
+    infof("Writing PBO Prefix...\n");
     f_target = fopen(args.target, "wb");
     fwrite("\0sreV\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0prefix\0", 28, 1, f_target);
     // write addonprefix with windows pathseps
@@ -347,6 +349,7 @@ int cmd_build() {
     fclose(f_target);
 
     // write headers to file
+    infof("Writing PBO Header...\n");
     if (traverse_directory(tempfolder, write_header_to_pbo, args.target)) {
         errorf("Failed to write some file header(s) to PBO.\n");
         remove_file(args.target);
@@ -355,6 +358,7 @@ int cmd_build() {
     }
 
     // header boundary
+    infof("Writing PBO Header Boundary...\n");
     f_target = fopen(args.target, "ab");
     if (!f_target) {
         errorf("Failed to write header boundary to PBO.\n");
@@ -367,6 +371,7 @@ int cmd_build() {
     fclose(f_target);
 
     // write contents to file
+    infof("Writing PBO Contents...\n");
     if (traverse_directory(tempfolder, write_data_to_pbo, args.target)) {
         errorf("Failed to pack some file(s) into the PBO.\n");
         remove_file(args.target);
@@ -375,6 +380,7 @@ int cmd_build() {
     }
 
     // write checksum to file
+    infof("Writing PBO Checksum...\n");
     unsigned char checksum[20];
     hash_file(args.target, checksum);
     f_target = fopen(args.target, "ab");
@@ -389,6 +395,7 @@ int cmd_build() {
     fclose(f_target);
 
     // remove temp folder
+    infof("Removing Temp Files\n");
     if (remove_folder(tempfolder)) {
         errorf("Failed to remove temp folder.\n");
         return 10;
@@ -396,6 +403,7 @@ int cmd_build() {
 
     // sign pbo
     if (args.key) {
+        infof("Signing PBO...\n");
         char keyname[512];
         char path_signature[2048];
 
