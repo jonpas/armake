@@ -32,7 +32,7 @@ matrix vector_tilda(const vector v) {
     r.m12 = -v.x;
     r.m20 = -v.y;
     r.m21 =  v.x;
-    
+
     return r;
 }
 
@@ -48,7 +48,7 @@ matrix matrix_sub(const matrix m1, const matrix m2) {
     r.m02 = m1.m02 - m2.m02;
     r.m12 = m1.m12 - m2.m12;
     r.m22 = m1.m22 - m2.m22;
-    
+
     return r;
 }
 
@@ -82,7 +82,7 @@ matrix matrix_mult(const matrix a, const matrix b) {
 
 matrix matrix_mult_scalar(const float s, const matrix m) {
     matrix r;
-    
+
     r.m00 = m.m00 * s;
     r.m10 = m.m10 * s;
     r.m20 = m.m20 * s;

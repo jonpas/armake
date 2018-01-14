@@ -63,8 +63,8 @@ int attempt_bis_binarize(char *source, char *target) {
     int i;
     int j;
     int k;
-	wchar_t wc_binarize[2048];
-	wchar_t wc_command[2048];
+    wchar_t wc_binarize[2048];
+    wchar_t wc_command[2048];
     char temp[2048];
     char tempfolder[2048];
     char filename[2048];
@@ -72,8 +72,8 @@ int attempt_bis_binarize(char *source, char *target) {
     FILE *f_source;
     struct mlod_lod *mlod_lods;
 
-	wchar_t wc_source[2048];
-	wchar_t wc_temp[2048];
+    wchar_t wc_source[2048];
+    wchar_t wc_temp[2048];
 
     current_operation = OP_P3D;
     strcpy(current_target, source);
@@ -95,7 +95,7 @@ int attempt_bis_binarize(char *source, char *target) {
     if (success != ERROR_SUCCESS)
         return -2;
 
-	wcscat(wc_binarize, L"/steamapps/common/Arma 3 Tools/Binarize/binarize.exe");
+    wcscat(wc_binarize, L"/steamapps/common/Arma 3 Tools/Binarize/binarize.exe");
 
     if (!wc_file_exists(wc_binarize))
         return -3;
@@ -174,9 +174,9 @@ int attempt_bis_binarize(char *source, char *target) {
     strcpy(filename, tempfolder);
     strcat(filename, temp);
 
-	mbstowcs(wc_source, source, 2048);
+    mbstowcs(wc_source, source, 2048);
     GetFullPathName(wc_source, 2048, wc_temp, NULL);
-	wcstombs(temp, wc_temp, 2048);
+    wcstombs(temp, wc_temp, 2048);
 
     if (copy_file(temp, filename)) {
         errorf("Failed to copy %s to temp folder.\n", temp);
@@ -222,24 +222,24 @@ int attempt_bis_binarize(char *source, char *target) {
     }
 
     // Call binarize.exe
-	wchar_t wc_target[2048];
-	mbstowcs(wc_target, target, 2048);
-	GetFullPathName(wc_target, 2048, wc_temp, NULL);
-	wcstombs(temp, wc_temp, 2048);
-	*(strrchr(temp, PATHSEP)) = 0;
+    wchar_t wc_target[2048];
+    mbstowcs(wc_target, target, 2048);
+    GetFullPathName(wc_target, 2048, wc_temp, NULL);
+    wcstombs(temp, wc_temp, 2048);
+    *(strrchr(temp, PATHSEP)) = 0;
 
-	if (wcslens(wc_binpath) <= 0)
-		swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -textures=%ls %ls %ls",
-			wc_binarize, wc_temp, wc_temp, wc_temp);
-	else
-		swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -binPath=%ls -textures=%ls %ls %ls",
-			wc_binarize, wc_binpath, wc_temp, wc_temp, wc_temp);
+    if (wcslens(wc_binpath) <= 0)
+    swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -textures=%ls %ls %ls",
+    wc_binarize, wc_temp, wc_temp, wc_temp);
+    else
+    swprintf(wc_command, 2048, L"\"%ls\" -norecurse -always -silent -maxProcesses=0 -binPath=%ls -textures=%ls %ls %ls",
+    wc_binarize, wc_binpath, wc_temp, wc_temp, wc_temp);
 
-	if (getenv("BIOUTPUT")) {
-		char command[2048];
-		wcstombs(command, wc_command, 2048);
-		debugf("cmdline: %s\n", command);
-	}
+    if (getenv("BIOUTPUT")) {
+    char command[2048];
+    wcstombs(command, wc_command, 2048);
+    debugf("cmdline: %s\n", command);
+    }
 
     if (!getenv("BIOUTPUT")) {
         secattr.lpSecurityDescriptor = NULL;

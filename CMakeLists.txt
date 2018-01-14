@@ -28,9 +28,9 @@ if(${WIN32})
 endif()
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
-	set(EXECUTABLE_NAME "armake_w32")
+    set(EXECUTABLE_NAME "armake_w32")
 else()
-	set(EXECUTABLE_NAME "armake_w64")
+    set(EXECUTABLE_NAME "armake_w64")
 endif()
 add_executable(${EXECUTABLE_NAME} ${SOURCES})
 
@@ -43,29 +43,29 @@ if(${UNIX})
 endif()
 
 if(${WIN32})
-	add_definitions(-D _WIN32_WINNT=0x0600)
+    add_definitions(-D _WIN32_WINNT=0x0600)
 endif()
 
 find_package(OpenSSL)
 if (OPENSSL_FOUND)
     include_directories(${OPENSSL_INCLUDE_DIR})
 else()
-	message(FATAL_ERROR "\nOPENSSL not found\n")
+    message(FATAL_ERROR "\nOPENSSL not found\n")
 endif()
 
 find_package(BISON)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/src/)
 if (BISON_FOUND)
-	set (BISON_${EXECUTABLE_NAME}_COMPILE_FLAGS "--defines=${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.tab.h")
-	BISON_TARGET(${EXECUTABLE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.y ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.tab.c)
+    set (BISON_${EXECUTABLE_NAME}_COMPILE_FLAGS "--defines=${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.tab.h")
+    BISON_TARGET(${EXECUTABLE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.y ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.tab.c)
 else()
-	message(FATAL_ERROR "\nBISON not found\n")
+    message(FATAL_ERROR "\nBISON not found\n")
 endif()
 find_package(FLEX)
 if (FLEX_FOUND)
-	FLEX_TARGET(${EXECUTABLE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.l ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.yy.c)
+    FLEX_TARGET(${EXECUTABLE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.l ${CMAKE_CURRENT_SOURCE_DIR}/src/rapify.yy.c)
 else()
-	message(FATAL_ERROR "\nFLEX not found\n")
+    message(FATAL_ERROR "\nFLEX not found\n")
 endif()
 
 target_sources(${EXECUTABLE_NAME} PUBLIC ${BISON_${EXECUTABLE_NAME}_OUTPUTS})
@@ -78,16 +78,16 @@ target_sources(${EXECUTABLE_NAME} PUBLIC ${FLEX_${EXECUTABLE_NAME}_OUTPUTS})
 
 
 if(${WIN32})
-	# Windows
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996") # _CRT_SECURE_NO_WARNINGS
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996") # _CRT_SECURE_NO_WARNINGS
-	target_link_libraries(${EXECUTABLE_NAME} ${OPENSSL_LIBRARIES} Iphlpapi crypt32 wsock32 ws2_32)
-	add_definitions(-DUNICODE -D_UNICODE -DWIN32_LEAN_AND_MEAN)
-	SET_TARGET_PROPERTIES(${EXECUTABLE_NAME} PROPERTIES LINK_FLAGS " /MANIFEST:NO /ERRORREPORT:NONE")
+    # Windows
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996") # _CRT_SECURE_NO_WARNINGS
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996") # _CRT_SECURE_NO_WARNINGS
+    target_link_libraries(${EXECUTABLE_NAME} ${OPENSSL_LIBRARIES} Iphlpapi crypt32 wsock32 ws2_32)
+    add_definitions(-DUNICODE -D_UNICODE -DWIN32_LEAN_AND_MEAN)
+    SET_TARGET_PROPERTIES(${EXECUTABLE_NAME} PROPERTIES LINK_FLAGS " /MANIFEST:NO /ERRORREPORT:NONE")
 else()
-	# Linux
-	target_link_libraries(${EXECUTABLE_NAME} -Wl,-Bstatic ${OPENSSL_LIBRARIES} -lcrypto -lm -Wl,-Bdynamic -ldl -pthread -lz)
-	set(CMAKE_CXX_FLAGS "-std=c++0x -static-libstdc++ -static-libgcc ${CMAKE_CXX_FLAGS}")
+    # Linux
+    target_link_libraries(${EXECUTABLE_NAME} -Wl,-Bstatic ${OPENSSL_LIBRARIES} -lcrypto -lm -Wl,-Bdynamic -ldl -pthread -lz)
+    set(CMAKE_CXX_FLAGS "-std=c++0x -static-libstdc++ -static-libgcc ${CMAKE_CXX_FLAGS}")
 endif()
 
 mark_as_advanced(CMAKE_INSTALL_PREFIX)

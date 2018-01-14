@@ -109,7 +109,7 @@ struct class *parse_file(FILE *f, struct lineref *lineref) {
     yydebug = 1;
 #endif
 
-    do { 
+    do {
         if (yyparse(&result, lineref)) {
             return NULL;
         }

@@ -193,7 +193,7 @@ int generate_keypair(char *name, char *path_private, char *path_public) {
     fwrite(buffer, length / 8, 1, f_public);
 
     fclose(f_public);
-    
+
     // clean up
     BN_free(exponent);
     RSA_free(rsa);

@@ -168,7 +168,7 @@ int img2paa(char *source, char *target) {
     unsigned char *workmem;
     unsigned char *outputdata;
     unsigned char color[4];
-    
+
     if (!args.paatype) {
         paatype = 0;
     } else if (stricmp("DXT1", args.paatype) == 0) {
@@ -295,7 +295,7 @@ int img2paa(char *source, char *target) {
             if (lzo_init() != LZO_E_OK) {
                 errorf("Failed to initialize LZO for compression.\n");
                 return 6;
-	    }
+        }
             if (lzo1x_1_compress(tmp, in_len, outputdata, &out_len, workmem) != LZO_E_OK) {
                 errorf("Failed to compress image data.\n");
                 return 6;
@@ -346,7 +346,7 @@ int img2paa(char *source, char *target) {
 
     fclose(f_target);
     free(imgdata);
-    
+
     return 0;
 }
 

@@ -855,13 +855,13 @@ int derapify_file(char *source, char *target) {
 
 #ifdef _WIN32
     char temp_name[2048];
-	wchar_t wc_temp_name[2048];
+    wchar_t wc_temp_name[2048];
 
     if (!GetTempFileName(L".", L"amk", 0, wc_temp_name)) {
         errorf("Failed to get temp file name (system error %i).\n", GetLastError());
         return 1;
     }
-	wcstombs(temp_name, wc_temp_name, 2048);
+    wcstombs(temp_name, wc_temp_name, 2048);
     f_temp = fopen(temp_name, "wb+");
 #else
     f_temp = tmpfile();
@@ -972,7 +972,7 @@ int derapify_file(char *source, char *target) {
     if (strcmp(args.source, "-") == 0) {
         strcpy(buffer, temp_name);
         strcat(buffer, "_in");
-		mbstowcs(wc_temp_name, buffer, 2048);
+        mbstowcs(wc_temp_name, buffer, 2048);
         DeleteFile(wc_temp_name);
     }
 #endif

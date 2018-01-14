@@ -1745,12 +1745,12 @@ int mlod2odol(char *source, char *target) {
 
 #ifdef _WIN32
     char temp_name[2048];
-	wchar_t wc_temp_name[2048];
+    wchar_t wc_temp_name[2048];
     if (!GetTempFileName(L".", L"amk", 0, wc_temp_name)) {
         errorf("Failed to get temp file name (system error %i).\n", GetLastError());
         return 1;
     }
-	mbstowcs(wc_temp_name, temp_name, 2048);
+    mbstowcs(wc_temp_name, temp_name, 2048);
     f_temp = fopen(temp_name, "wb+");
 #else
     f_temp = tmpfile();
@@ -1759,7 +1759,7 @@ int mlod2odol(char *source, char *target) {
     if (!f_temp) {
         errorf("Failed to open temp file.\n");
 #ifdef _WIN32
-		remove_file(temp_name);
+        remove_file(temp_name);
 #endif
         return 1;
     }
@@ -1770,7 +1770,7 @@ int mlod2odol(char *source, char *target) {
         errorf("Failed to open source file.\n");
         fclose(f_temp);
 #ifdef _WIN32
-		remove_file(temp_name);
+        remove_file(temp_name);
 #endif
         return 2;
     }
@@ -1782,7 +1782,7 @@ int mlod2odol(char *source, char *target) {
         fclose(f_temp);
         fclose(f_source);
 #ifdef _WIN32
-		remove_file(temp_name);
+        remove_file(temp_name);
 #endif
         return -3;
     }
@@ -1797,7 +1797,7 @@ int mlod2odol(char *source, char *target) {
         fclose(f_temp);
         fclose(f_source);
 #ifdef _WIN32
-		remove_file(temp_name);
+        remove_file(temp_name);
 #endif
         return 4;
     }
@@ -1819,7 +1819,7 @@ int mlod2odol(char *source, char *target) {
         errorf("Failed to read model config.\n");
         fclose(f_temp);
 #ifdef _WIN32
-		remove_file(temp_name);
+        remove_file(temp_name);
 #endif
         return success;
     }
@@ -1914,7 +1914,7 @@ int mlod2odol(char *source, char *target) {
         errorf("Failed to open target file.\n");
         fclose(f_temp);
 #ifdef _WIN32
-		remove_file(temp_name);
+        remove_file(temp_name);
 #endif
         return 5;
     }
@@ -1932,7 +1932,7 @@ int mlod2odol(char *source, char *target) {
     fclose(f_target);
 
 #ifdef _WIN32
-	remove_file(temp_name);
+    remove_file(temp_name);
 #endif
 
     for (i = 0; i < num_lods; i++) {

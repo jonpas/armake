@@ -38,79 +38,79 @@
 
 
 typedef struct {
-    /* commands */
-    int binarize;
-    int build;
-    int cat;
-    int derapify;
-    int img2paa;
-    int inspect;
-    int keygen;
-    int paa2img;
-    int sign;
-    int unpack;
-    /* arguments */
-    char *excludepattern;
-    char *includefolder;
-    char *includepattern;
-    char *indentation;
-    char *name;
-    char *paatype;
-    char *privatekey;
-    char *source;
-    char *target;
-    char *wname;
-    char *xlist;
-    /* options without arguments */
-    int compress;
-    int exclude;
-    int force;
-    int help;
-    int include;
-    int indent;
-    int key;
-    int packonly;
-    int type;
-    int version;
-    int warning;
-    /* special */
-    const char *usage_pattern;
-    const char *help_message;
+	/* commands */
+	int binarize;
+	int build;
+	int cat;
+	int derapify;
+	int img2paa;
+	int inspect;
+	int keygen;
+	int paa2img;
+	int sign;
+	int unpack;
+	/* arguments */
+	char *excludepattern;
+	char *includefolder;
+	char *includepattern;
+	char *indentation;
+	char *name;
+	char *paatype;
+	char *privatekey;
+	char *source;
+	char *target;
+	char *wname;
+	char *xlist;
+	/* options without arguments */
+	int compress;
+	int exclude;
+	int force;
+	int help;
+	int include;
+	int indent;
+	int key;
+	int packonly;
+	int type;
+	int version;
+	int warning;
+	/* special */
+	const char *usage_pattern;
+	const char *help_message;
 } DocoptArgs;
 
 typedef struct {
-    const char *name;
-    bool value;
+	const char *name;
+	bool value;
 } Command;
 
 typedef struct {
-    const char *name;
-    char *value;
-    char **array;
+	const char *name;
+	char *value;
+	char **array;
 } Argument;
 
 typedef struct {
-    const char *oshort;
-    const char *olong;
-    bool argcount;
-    bool value;
-    char *argument;
+	const char *oshort;
+	const char *olong;
+	bool argcount;
+	bool value;
+	char *argument;
 } Option;
 
 typedef struct {
-    int n_commands;
-    int n_arguments;
-    int n_options;
-    Command *commands;
-    Argument *arguments;
-    Option *options;
+	int n_commands;
+	int n_arguments;
+	int n_options;
+	Command *commands;
+	Argument *arguments;
+	Option *options;
 } Elements;
 
 typedef struct Tokens {
-    int argc;
-    char **argv;
-    int i;
-    char *current;
+	int argc;
+	char **argv;
+	int i;
+	char *current;
 } Tokens;
 
 
@@ -135,7 +135,6 @@ int parse_argcmd(Tokens *ts, Elements *elements);
 int parse_args(Tokens *ts, Elements *elements);
 
 int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
-                  const char *version);
+				  const char *version);
 
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version);
-

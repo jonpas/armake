@@ -317,8 +317,8 @@ int cmd_build() {
 
         if (access(configpath, F_OK) != -1) {
 #ifdef _WIN32
-			wchar_t wc_configpath[2048];
-			mbstowcs(wc_configpath, configpath, 2048);
+            wchar_t wc_configpath[2048];
+            mbstowcs(wc_configpath, configpath, 2048);
             if (!DeleteFile(wc_configpath)) {
 #else
             if (remove(configpath)) {
