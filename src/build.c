@@ -62,7 +62,8 @@ bool file_allowed(char *filename) {
 
     if (strcmp(filename, "$PBOPREFIX$") == 0)
         return false;
-
+    if (strcmp(strrchr(filename, '.'), ".cfg") == 0) // model.cfg etc
+        return false;
     for (i = 0; i < MAXEXCLUDEFILES && exclude_files[i][0] != 0; i++) {
         if (matches_glob(filename, exclude_files[i]))
             return false;

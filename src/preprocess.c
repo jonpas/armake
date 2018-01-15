@@ -444,7 +444,7 @@ bool matches_includepath(char *path, char *includepath, char *includefolder) {
     /*
      * Checks if a given file can be matched to an include path by traversing
      * backwards through the filesystem until a $PBOPREFIX$ file is found.
-     * If the prefix file, together with the diretory strucure, matches the
+     * If the prefix file, together with the directory structure, matches the
      * included path, true is returned.
      */
 
