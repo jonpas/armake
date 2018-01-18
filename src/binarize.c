@@ -64,6 +64,56 @@ int check_bis_binarize() {
 }
 
 
+int get_rvmat_dependencies(char *filename, char *tempfolder) {
+    // TODO split rvmat into recursive function i.e for .rvmats / .bisurfs (penetration)
+    FILE *f_rvmat_source;
+    f_rvmat_source = fopen(filename, "r");
+    char buffer[2048];
+    while (fgets(buffer, 2048, f_rvmat_source)) {
+        trim(buffer, 2048);
+        if (strlens(buffer) > strlens("texture")) {
+            if (strncmp("texture", buffer, strlen("texture")) == 0) {
+                char *texture_path = strchr(buffer, '"');
+                if (strlens(texture_path) > 2) {
+                    texture_path = texture_path + 1;
+                    char *texture_path_end = strrchr(buffer, '"');
+                    if (strlens(texture_path) > 2) {
+                        *texture_path_end = 0;
+                        if (strncmp(texture_path, "#", 1) != 0) {
+                            char texture_path_corrected[2048] = "\\";
+                            strcat(texture_path_corrected, texture_path);
+                            char temp_filename[2048];
+                            strcpy(temp_filename, tempfolder);
+                            strcat(temp_filename, texture_path);
+                            if (!file_exists(temp_filename)) {  // Check if file already exists in Temp //TODO add support for checking paa instead of tga etc
+                                if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
+                                    warningf("Failed to find file %s\n", filename);
+                                }
+                                else {
+                                    strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
+                                    if (copy_file(texture_path_corrected, temp_filename)) {
+                                        errorf("Failed to copy %s to temp folder %s.\n", texture_path_corrected, temp_filename);
+                                        return 3;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        errorf("Parsing rvmat: ", filename, "\n\t\t", buffer, "\n");
+                    }
+                }
+                else {
+                    errorf("Parsing rvmat: ", filename, "\n\t\t", buffer, "\n");
+                }
+            }
+        }
+    }
+    fclose(f_rvmat_source);
+    return 0;
+}
+
+
 int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
     char temp[2048];
     char filename[2048];
@@ -78,10 +128,10 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
 
     // Read P3D and create a list of required files
     f_source = fopen(source, "rb");
-	if (!f_source) {
-		fclose(f_source);
-		return 1;
-	}
+    if (!f_source) {
+        fclose(f_source);
+        return 1;
+    }
 
     fseek(f_source, 8, SEEK_SET);
     fread(&num_lods, 4, 1, f_source);
@@ -139,141 +189,95 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
 
 
     sprintf(temp, "%s%s", tempfolder, (strrchr(source, '\\') + 1));
-	if (!bulk_binarize) {
-		if (copy_file(source, temp)) {
-			errorf("Failed to copy p3d to temp folder.\n");
-			return 1;
-		}
+    if (!bulk_binarize) {
+        if (copy_file(source, temp)) {
+            errorf("Failed to copy p3d to temp folder.\n");
+            return 1;
+        }
 
-		// Try to find the required files and copy them there too
-		// Copy <config>.cpp
-		strcpy(temp, source);
-		strcpy(strrchr(temp, '\\') + 1, "config.cpp");
-		strcpy(filename, tempfolder);
-		strcat(filename, "config.cpp");
-		copy_file(temp, filename);
+        // Try to find the required files and copy them there too
+        // Copy <config>.cpp
+        strcpy(temp, source);
+        strcpy(strrchr(temp, '\\') + 1, "config.cpp");
+        strcpy(filename, tempfolder);
+        strcat(filename, "config.cpp");
+        copy_file(temp, filename);
 
-		// Copy <model>.cfg
-		strcpy(temp, source);
-		strcpy(strrchr(temp, '\\') + 1, "model.cfg");
-		strcpy(filename, tempfolder);
-		strcat(filename, "model.cfg");
-		copy_file(temp, filename);
+        // Copy <model>.cfg
+        strcpy(temp, source);
+        strcpy(strrchr(temp, '\\') + 1, "model.cfg");
+        strcpy(filename, tempfolder);
+        strcat(filename, "model.cfg");
+        copy_file(temp, filename);
 
-		// Copy <model_name>.cfg
-		strcpy(temp, source);
-		strcpy(strrchr(temp, '.') + 1, "cfg");
-		strcpy(filename, tempfolder);
-		strcpy(strrchr(filename, '\\') + 1, strrchr(temp, '\\') + 1);
-		copy_file(temp, filename);
+        // Copy <model_name>.cfg
+        strcpy(temp, source);
+        strcpy(strrchr(temp, '.') + 1, "cfg");
+        strcpy(filename, tempfolder);
+        strcpy(strrchr(filename, '\\') + 1, strrchr(temp, '\\') + 1);
+        copy_file(temp, filename);
 
-		// Copy <directory_name>.cfg -> <temp_directory_name>.cfg
-		char directoryname[2048];
-		strcpy(temp, source);
-		*strrchr(temp, '\\') = 0;
-		strcpy(directoryname, strrchr(temp, '\\') + 1);
-		strcat(directoryname, ".cfg");
-		strcpy(temp, source);
-		strcpy(strrchr(temp, '\\') + 1, directoryname);
+        // Copy <directory_name>.cfg -> <temp_directory_name>.cfg
+        char directoryname[2048];
+        strcpy(temp, source);
+        *strrchr(temp, '\\') = 0;
+        strcpy(directoryname, strrchr(temp, '\\') + 1);
+        strcat(directoryname, ".cfg");
+        strcpy(temp, source);
+        strcpy(strrchr(temp, '\\') + 1, directoryname);
 
-		char tempdirectoryname[2048];
-		strcpy(filename, tempfolder);
-		*strrchr(filename, '\\') = 0;
-		strcpy(tempdirectoryname, strrchr(filename, '\\') + 1);
-		strcat(tempdirectoryname, ".cfg");
-		strcpy(filename, tempfolder);
-		strcpy(strrchr(filename, '\\') + 1, tempdirectoryname);
-		copy_file(temp, filename);
-	}
+        char tempdirectoryname[2048];
+        strcpy(filename, tempfolder);
+        *strrchr(filename, '\\') = 0;
+        strcpy(tempdirectoryname, strrchr(filename, '\\') + 1);
+        strcat(tempdirectoryname, ".cfg");
+        strcpy(filename, tempfolder);
+        strcpy(strrchr(filename, '\\') + 1, tempdirectoryname);
+        copy_file(temp, filename);
+    }
 
 
     for (i = 0; i < MAXTEXTURES; i++) {
         if (dependencies[i] == 0)
             break;
 
-		strcpy(filename, tempfolder);
-		if (dependencies[i][0] != '\\')
-			strcat(filename, dependencies[i]);
-		else
-			strcat(filename, dependencies[i]+1);
+        strcpy(filename, tempfolder);
+        if (dependencies[i][0] != '\\')
+            strcat(filename, dependencies[i]);
+        else
+            strcat(filename, dependencies[i]+1);
 
-		if (!file_exists(filename)) {
-			*filename = 0;
-			*temp = 0;
-			if (dependencies[i][0] != '\\')
-				strcpy(filename, "\\");
-			strcat(filename, dependencies[i]);
+        if (!file_exists(filename)) {
+            *filename = 0;
+            *temp = 0;
+            if (dependencies[i][0] != '\\')
+                strcpy(filename, "\\");
+            strcat(filename, dependencies[i]);
 
-			if (find_file(filename, "", temp, true, true)) {
-				warningf("Failed to find file %s.\n", filename);
-				continue;
-			} else {
-				strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.'));
-			}
+            if (find_file(filename, "", temp, true, true)) {
+                warningf("Failed to find file %s.\n", filename);
+                continue;
+            } else {
+                strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.'));
+            }
 
-			strcpy(filename, tempfolder);
-			strcat(filename, dependencies[i]);
+            strcpy(filename, tempfolder);
+            strcat(filename, dependencies[i]);
 
-			if (copy_file(temp, filename)) {
-				errorf("Failed to copy %s to temp folder %s.\n", temp, filename);
-				return 3;
-			}
-		}
-
-		// TODO split rvmat into recursive function i.e for .rvmats / .bisurfs (penetration)
-        FILE *f_rvmat_source;
-        char *ext = strrchr(filename, '.');
-        if (ext != NULL) {
-            if (strcmp(ext, ".rvmat") == 0) {
-                f_rvmat_source = fopen(filename, "r");
-                char buffer[2048];
-                while (fgets(buffer, 2048, f_rvmat_source)) {
-                    trim(buffer, 2048);
-                    if (strlens(buffer) > strlens("texture"))
-                    {
-                        if (strncmp("texture", buffer, strlen("texture")) == 0) {
-                            char *texture_path = strchr(buffer, '"');
-                            if (strlens(texture_path) > 2) {
-                                texture_path = texture_path + 1;
-                                char *texture_path_end = strrchr(buffer, '"');
-                                if (strlens(texture_path) > 2) {
-                                    *texture_path_end = 0;
-                                    if (strncmp(texture_path,"#",1) != 0) {
-                                        char texture_path_corrected[2048] = "\\";
-                                        strcat(texture_path_corrected, texture_path);
-                                        char temp_filename[2048];
-                                        strcpy(temp_filename, tempfolder);
-                                        strcat(temp_filename, texture_path);
-										if (!file_exists(temp_filename)) {  // Check if file already exists in Temp //TODO add support for checking paa instead of tga etc
-											if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
-												warningf("Failed to find file %s\n", filename);
-											}
-											else {
-												strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
-												if (copy_file(texture_path_corrected, temp_filename)) {
-													errorf("Failed to copy %s to temp folder %s.\n", texture_path_corrected, temp_filename);
-													return 3;
-												}
-											}
-										}
-                                    }
-                                } else {
-                                    errorf("Parsing rvmat: ", filename, "\n\t\t", buffer, "\n");
-                                }
-                            } else {
-                                errorf("Parsing rvmat: ", filename, "\n\t\t", buffer, "\n");
-                            }
-                        }
-                    }
-                }
-                fclose(f_rvmat_source);
+            if (copy_file(temp, filename)) {
+                errorf("Failed to copy %s to temp folder %s.\n", temp, filename);
+                return 3;
             }
         }
+        char *ext = strrchr(filename, '.');
+        if ((ext != NULL) && (stricmp(ext, ".rvmat") == 0))
+            get_rvmat_dependencies(filename, tempfolder);
+
+
         free(dependencies[i]);
     }
     return 0;
 }
-
 
 
 int attempt_bis_binarize(char *source, char *target) {
@@ -282,7 +286,7 @@ int attempt_bis_binarize(char *source, char *target) {
      * exe is not found, a negative integer is returned. 0 is returned on
      * success and a positive integer on failure.
      */
-	infof("  Setting up %s.\n", source);
+    infof("  Setting up %s.\n", source);
 
     extern int current_operation;
     extern char current_target[2048];
@@ -291,8 +295,8 @@ int attempt_bis_binarize(char *source, char *target) {
     PROCESS_INFORMATION processInfo;
     long success;
 
-	size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
-	wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
+    size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
+    wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
     wchar_t wc_temp[2048];
     char tempfolder[2048];
     wchar_t wc_tempfolder[2048];
@@ -331,14 +335,14 @@ int attempt_bis_binarize(char *source, char *target) {
         errorf("Failed to create temp folder.\n");
         return 1;
     }
-	
-	for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
-		copy_includes(include_folders[i], tempfolder);
-	}
-	if (tempfolder[strlen(tempfolder) - 1] != PATHSEP) {  //copy_includes removes trailing PATHSEP
-		strcat(tempfolder, PATHSEP_STR);
-	}
-	
+
+    for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
+        copy_includes(include_folders[i], tempfolder);
+    }
+    if (tempfolder[strlen(tempfolder) - 1] != PATHSEP) {  //copy_includes removes trailing PATHSEP
+        strcat(tempfolder, PATHSEP_STR);
+    }
+
 
     // Copy P3D Dependencies to temporary folder
     success = get_p3d_dependencies(source, tempfolder, false);
@@ -361,10 +365,10 @@ int attempt_bis_binarize(char *source, char *target) {
             wc_binarize, wc_addonpaths, wc_tempfolder, wc_temp);
 
     if (getenv("BIOUTPUT")) {
-		char *command = malloc(sizeof(char) * (wc_command_len + 1));
-		wcstombs(command, wc_command, wc_command_len);
-		debugf("cmdline: %s\n", command);
-		free(command);
+        char *command = malloc(sizeof(char) * (wc_command_len + 1));
+        wcstombs(command, wc_command, wc_command_len);
+        debugf("cmdline: %s\n", command);
+        free(command);
     }
 
     if (!getenv("BIOUTPUT")) {
@@ -374,14 +378,14 @@ int attempt_bis_binarize(char *source, char *target) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-	infof("  Binarize %s.\n", source);
+    infof("  Binarize %s.\n", source);
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_tempfolder, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
     } else {
         errorf("Failed to binarize %s.\n", source);
-		free(wc_command);
+        free(wc_command);
         return 3;
     }
 
@@ -391,11 +395,11 @@ int attempt_bis_binarize(char *source, char *target) {
     // Clean Up
     if (remove_folder(tempfolder)) {
         errorf("Failed to remove temp folder.\n");
-		free(wc_command);
+        free(wc_command);
         return 4;
     }
 
-	free(wc_command);
+    free(wc_command);
     return success;
 }
 
@@ -421,10 +425,10 @@ int attempt_bis_bulk_binarize(char *source) {
     char temppath[2048];
     wchar_t wc_temppath[2048];
     get_temp_path(temppath, 2048);
-	strcat(temppath, PATHSEP_STR);
+    strcat(temppath, PATHSEP_STR);
     mbstowcs(wc_temppath, temppath, 2048);
 
-	copy_bulk_p3ds_dependencies(source, temppath);
+    copy_bulk_p3ds_dependencies(source, temppath);
 
     if (wcslens(wc_addonpaths) <= 0) {
         swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls",
@@ -436,10 +440,10 @@ int attempt_bis_bulk_binarize(char *source) {
 
 
     if (!getenv("BIOUTPUT")) {
-		char *command = malloc(sizeof(char) * (wc_command_len + 1));
+        char *command = malloc(sizeof(char) * (wc_command_len + 1));
         wcstombs(command, wc_command, wc_command_len);
         debugf("cmdline: %s\n", command);
-		free(command);
+        free(command);
     }
 
     if (getenv("BIOUTPUT")) {
@@ -455,14 +459,14 @@ int attempt_bis_bulk_binarize(char *source) {
         CloseHandle(processInfo.hThread);
     } else {
         errorf("Failed to binarize %s.\n", source);
-		free(wc_command);
+        free(wc_command);
         return 3;
     }
 
     if (getenv("BIOUTPUT"))
         debugf("done with binarize.exe\n");
 
-	free(wc_command);
+    free(wc_command);
     return 0;
 }
 
@@ -506,7 +510,7 @@ int attempt_bis_texheader(char *target) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-	if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo)) {
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);

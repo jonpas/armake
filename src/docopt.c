@@ -315,8 +315,8 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->packonly = option->value;
         } else if (!strcmp(option->olong, "--type")) {
             args->type = option->value;
-		} else if (!strcmp(option->olong, "--temppath")) {
-			args->temppath = option->value;
+        } else if (!strcmp(option->olong, "--temppath")) {
+            args->temppath = option->value;
         } else if (!strcmp(option->olong, "--version")) {
             args->version = option->value;
         } else if (!strcmp(option->olong, "--warning")) {
@@ -425,7 +425,7 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-k", "--key", 0, 0, NULL},
         {"-p", "--packonly", 0, 0, NULL},
         {"-t", "--type", 0, 0, NULL},
-		{ "-T", "--temppath", 0, 0, NULL },
+        { "-T", "--temppath", 0, 0, NULL },
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };

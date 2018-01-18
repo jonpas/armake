@@ -546,24 +546,23 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
         return -1;
 
     int status = -1;
-	char fileext[64];
-	if (strrchr(source, '.') != NULL) {
-		strcpy(fileext, strrchr(source, '.'));
-		if (fileext != NULL && (!strcmp(fileext, ".h")) || (!strcmp(fileext, ".hpp"))) {
-			char prefixedpath[2048];
-			get_prefixpath(source, source_root, prefixedpath, sizeof(prefixedpath));
+    char fileext[64];
+    if (strrchr(source, '.') != NULL) {
+        strcpy(fileext, strrchr(source, '.'));
+        if (fileext != NULL && (!strcmp(fileext, ".h")) || (!strcmp(fileext, ".hpp"))) {
+            char prefixedpath[2048];
+            get_prefixpath(source, source_root, prefixedpath, sizeof(prefixedpath));
 
-			char *target = malloc(sizeof(*target)* (strlen(prefixedpath) + strlen(target_root) + 1 + 1)); // assume worst case
-			target[0] = 0;
-			strcat(target, target_root);
-			strcat(target, PATHSEP_STR);
-			strcat(target, prefixedpath);
-			//infof("DEBUG: %s -> %s\n", source, target);
-			status = copy_file(source, target);
-			free(target);
-		}
-	}
-
+            char *target = malloc(sizeof(*target)* (strlen(prefixedpath) + strlen(target_root) + 1 + 1)); // assume worst case
+            target[0] = 0;
+            strcat(target, target_root);
+            strcat(target, PATHSEP_STR);
+            strcat(target, prefixedpath);
+            //infof("DEBUG: %s -> %s\n", source, target);
+            status = copy_file(source, target);
+            free(target);
+        }
+    }
 
     return 0;
 }
@@ -592,7 +591,7 @@ int copy_includes(char *source, char *target) {
      */
 
     // Remove trailing path seperators
-	
+
     if (source[strlen(source) - 1] == PATHSEP)
         source[strlen(source) - 1] = 0;
     if (target[strlen(target) - 1] == PATHSEP)
@@ -603,17 +602,17 @@ int copy_includes(char *source, char *target) {
 
 
 int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder) {
-	char *ext = strrchr(source, '.');
-	if ((ext != NULL) && (!stricmp(ext, ".p3d"))) {
-		int success = get_p3d_dependencies(source, tempfolder, true);
-		if (success > 0)
-			return success;
-		infof(".");
-	}
-	return 0;
+    char *ext = strrchr(source, '.');
+    if ((ext != NULL) && (!stricmp(ext, ".p3d"))) {
+    int success = get_p3d_dependencies(source, tempfolder, true);
+    if (success > 0)
+    return success;
+    infof(".");
+    }
+    return 0;
 }
 
 
 int copy_bulk_p3ds_dependencies(char *source, char *tempfolder) {
-	return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder);
+    return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder);
 }

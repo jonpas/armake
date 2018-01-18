@@ -442,45 +442,45 @@ void constant_free(struct constant *constant) {
 
 void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t prefixedpath_size) {
 
-	//*prefixedpath = 0;
-	char cwd[2048];
-	char *ptr;
-	strncpy(cwd, path, 2048);
-	ptr = cwd + strlen(cwd);
+    //*prefixedpath = 0;
+    char cwd[2048];
+    char *ptr;
+    strncpy(cwd, path, 2048);
+    ptr = cwd + strlen(cwd);
 
-	while (strcmp(includefolder, cwd) != 0) {
-		char prefixpath[2048];
+    while (strcmp(includefolder, cwd) != 0) {
+        char prefixpath[2048];
 
-		while (*ptr != PATHSEP)
-			ptr--;
-		*ptr = 0;
+        while (*ptr != PATHSEP)
+            ptr--;
+        *ptr = 0;
 
-		strncpy(prefixpath, cwd, 2048);
-		strcat(prefixpath, PATHSEP_STR);
-		strcat(prefixpath, "$PBOPREFIX$");
+        strncpy(prefixpath, cwd, 2048);
+        strcat(prefixpath, PATHSEP_STR);
+        strcat(prefixpath, "$PBOPREFIX$");
 
-		FILE *f_prefix = fopen(prefixpath, "rb");
-		if (!f_prefix) {
-			continue;
-		}
+        FILE *f_prefix = fopen(prefixpath, "rb");
+        if (!f_prefix) {
+            continue;
+        }
 
-		fgets(prefixedpath, prefixedpath_size, f_prefix);
-		fclose(f_prefix);
+        fgets(prefixedpath, prefixedpath_size, f_prefix);
+        fclose(f_prefix);
 
-		if (prefixedpath[strlen(prefixedpath) - 1] == '\n')
-			prefixedpath[strlen(prefixedpath) - 1] = 0;
-		if (prefixedpath[strlen(prefixedpath) - 1] == '\r')
-			prefixedpath[strlen(prefixedpath) - 1] = 0;
-		if (prefixedpath[strlen(prefixedpath) - 1] == '\\')
-			prefixedpath[strlen(prefixedpath) - 1] = 0;
+        if (prefixedpath[strlen(prefixedpath) - 1] == '\n')
+            prefixedpath[strlen(prefixedpath) - 1] = 0;
+        if (prefixedpath[strlen(prefixedpath) - 1] == '\r')
+            prefixedpath[strlen(prefixedpath) - 1] = 0;
+        if (prefixedpath[strlen(prefixedpath) - 1] == '\\')
+            prefixedpath[strlen(prefixedpath) - 1] = 0;
 
-		strcat(prefixedpath, path + strlen(cwd));
+        strcat(prefixedpath, path + strlen(cwd));
 
-		for (int i = 0; i < strlen(prefixedpath); i++) {
-			if (prefixedpath[i] == '/')
-				prefixedpath[i] = '\\';
-		}
-	}
+        for (int i = 0; i < strlen(prefixedpath); i++) {
+            if (prefixedpath[i] == '/')
+                prefixedpath[i] = '\\';
+        }
+    }
 }
 
 bool matches_includepath(char *path, char *includepath, char *includefolder, bool case_insensitive) {
@@ -493,9 +493,9 @@ bool matches_includepath(char *path, char *includepath, char *includefolder, boo
 
     char prefixedpath[2048];
 
-	get_prefixpath(path, includefolder, prefixedpath, 2048);
-	if (prefixedpath != NULL) {
-		// compensate for missing leading slash in PBOPREFIX
+    get_prefixpath(path, includefolder, prefixedpath, 2048);
+    if (prefixedpath != NULL) {
+        // compensate for missing leading slash in PBOPREFIX
         if (case_insensitive) {
             if (prefixedpath[0] != '\\')
                 return (stricmp(prefixedpath, includepath + 1) == 0);
@@ -551,24 +551,24 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
     while (*ptr != '\\')
         ptr--;
     ptr++;
-	strncpy(filename, ptr, 2048);
+    strncpy(filename, ptr, 2048);
 
 #ifdef _WIN32
     if (cwd == NULL)
         return find_file_helper(includepath, origin, includefolder, actualpath, includefolder, case_insensitive, fuzzy_filename);
 
     char alternative_filename[2048];
-	char alternative_includepath[2048];
-	*alternative_filename = 0;
-	*alternative_includepath = 0;
-	if (fuzzy_filename) {
-		if (!stricmp(strrchr(filename, '.'), ".tga")) {
-			strncpy(alternative_filename, filename, 2048);
-			strcpy(strchr(alternative_filename, '.'), ".paa");
-			strncpy(alternative_includepath, includepath, 2048);
-			strcpy(strchr(alternative_includepath, '.'), ".paa");
-		}
-	}
+    char alternative_includepath[2048];
+    *alternative_filename = 0;
+    *alternative_includepath = 0;
+    if (fuzzy_filename) {
+        if (!stricmp(strrchr(filename, '.'), ".tga")) {
+            strncpy(alternative_filename, filename, 2048);
+            strcpy(strchr(alternative_filename, '.'), ".paa");
+            strncpy(alternative_includepath, includepath, 2048);
+            strcpy(strchr(alternative_includepath, '.'), ".paa");
+        }
+    }
 
     WIN32_FIND_DATA file;
     HANDLE handle = NULL;
@@ -577,8 +577,8 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
 
     wchar_t wc_filename[2048];
     mbstowcs(wc_filename, filename, 2048);
-	wchar_t wc_alternative_filename[2048];
-	mbstowcs(wc_alternative_filename, alternative_filename, 2048);
+    wchar_t wc_alternative_filename[2048];
+    mbstowcs(wc_alternative_filename, alternative_filename, 2048);
 
     wchar_t wc_includefolder[2048];
     mbstowcs(wc_includefolder, includefolder, 2048);
