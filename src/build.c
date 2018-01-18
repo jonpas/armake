@@ -47,7 +47,7 @@ int binarize_callback(char *root, char *source, char *junk) {
         strcpy(target + strlen(target) - 3, "bin");
     }
 
-    success = binarize(source, target, true);
+    success = binarize(source, target, false);
 
     if (success > 0)
         return success * -1;
@@ -60,10 +60,14 @@ bool file_allowed(char *filename) {
     int i;
     extern char exclude_files[MAXEXCLUDEFILES][512];
 
-    if (strcmp(filename, "$PBOPREFIX$") == 0)
+    if (stricmp(filename, "$PBOPREFIX$") == 0)
         return false;
-    if (strcmp(strrchr(filename, '.'), ".cfg") == 0) // model.cfg etc
+    if (stricmp(strrchr(filename, '.'), ".cfg") == 0) // model.cfg etc
         return false;
+	if (stricmp(strrchr(filename, '.'), ".tga") == 0)
+		return false;
+	if (stricmp(strrchr(filename, '.'), ".dep") == 0)
+		return false;
     for (i = 0; i < MAXEXCLUDEFILES && exclude_files[i][0] != 0; i++) {
         if (matches_glob(filename, exclude_files[i]))
             return false;
@@ -297,11 +301,11 @@ int cmd_build() {
 
 #ifdef _WIN32
 	if (found_bis_binarize) {
+		char includetempfolder[sizeof(tempfolder)];
+		strcpy(includetempfolder, tempfolder);
+		*strrchr(includetempfolder, PATHSEP) = 0;
 		for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
-			copy_includes(include_folders[i], tempfolder);
-		}
-		if (tempfolder[strlen(tempfolder) - 1] != PATHSEP) {  //copy_includes removes trailing PATHSEP
-			strcat(tempfolder, PATHSEP_STR);
+			copy_includes(include_folders[i], includetempfolder);
 		}
 	}
 #endif
@@ -341,7 +345,7 @@ int cmd_build() {
                 return 5;
             }
         }
-#ifdef _WIN32p
+#ifdef _WIN32
         infof("Binarizing p3ds + wrps...\n"); // Should be these type of files left to binarize
         if (attempt_bis_bulk_binarize(tempfolder)) {
             errorf("Failed to bulk binarize some files.\n");
