@@ -36,6 +36,7 @@
 #include <unistd.h>
 #endif
 
+#include "binarize.h"
 #include "filesystem.h"
 #include "docopt.h"
 #include "preprocess.h"
@@ -598,4 +599,21 @@ int copy_includes(char *source, char *target) {
         target[strlen(target) - 1] = 0;
 
     return traverse_directory(source, copy_includes_callback, target);
+}
+
+
+int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder) {
+	char *ext = strrchr(source, '.');
+	if ((ext != NULL) && (!stricmp(ext, ".p3d"))) {
+		int success = get_p3d_dependencies(source, tempfolder, true);
+		if (success > 0)
+			return success;
+		infof(".");
+	}
+	return 0;
+}
+
+
+int copy_bulk_p3ds_dependencies(char *source, char *tempfolder) {
+	return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder);
 }

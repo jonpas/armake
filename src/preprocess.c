@@ -559,6 +559,8 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
 
     char alternative_filename[2048];
 	char alternative_includepath[2048];
+	*alternative_filename = 0;
+	*alternative_includepath = 0;
 	if (fuzzy_filename) {
 		if (!stricmp(strrchr(filename, '.'), ".tga")) {
 			strncpy(alternative_filename, filename, 2048);
@@ -610,7 +612,7 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }
-                if (!(alternative_filename==NULL) && wcsicmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
+                if ((alternative_filename != NULL) && wcsicmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }
@@ -619,7 +621,7 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }
-                if (!(alternative_filename == NULL) && wcscmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
+                if ((alternative_filename != NULL) && wcscmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }

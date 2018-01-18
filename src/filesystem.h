@@ -41,6 +41,8 @@
 bool file_exists(char *path);
 bool wc_file_exists(wchar_t *wc_path);
 size_t getline(char **lineptr, size_t *n, FILE *stream);
+
+int copy_bulk_p3ds_dependencies(char *source, char *tempfolder);
 #endif
 
 int get_temp_name(char *target, char *suffix);
