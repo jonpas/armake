@@ -543,7 +543,7 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 
     if (strstr(source, source_root) != source)
         return -1;
-	
+
     int status = -1;
 	char fileext[64];
 	if (strrchr(source, '.') != NULL) {
@@ -557,7 +557,7 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 			strcat(target, target_root);
 			strcat(target, PATHSEP_STR);
 			strcat(target, prefixedpath);
-			infof("DEBUG: %s : %s\n", source, target);
+			//infof("DEBUG: %s -> %s\n", source, target);
 			status = copy_file(source, target);
 			free(target);
 		}
@@ -591,6 +591,7 @@ int copy_includes(char *source, char *target) {
      */
 
     // Remove trailing path seperators
+	
     if (source[strlen(source) - 1] == PATHSEP)
         source[strlen(source) - 1] = 0;
     if (target[strlen(target) - 1] == PATHSEP)

@@ -300,6 +300,9 @@ int cmd_build() {
 		for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
 			copy_includes(include_folders[i], tempfolder);
 		}
+		if (tempfolder[strlen(tempfolder) - 1] != PATHSEP) {  //copy_includes removes trailing PATHSEP
+			strcat(tempfolder, PATHSEP_STR);
+		}
 	}
 #endif
 

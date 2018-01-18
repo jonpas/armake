@@ -186,23 +186,24 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool fuzzy_filename) {
         if (dependencies[i] == 0)
             break;
 
-        *filename = 0;
-        if (dependencies[i][0] != '\\')
-            strcpy(filename, "\\");
-        strcat(filename, dependencies[i]);
+		*filename = 0;
+		*temp = 0;
+		if (dependencies[i][0] != '\\')
+			strcpy(filename, "\\");
+		strcat(filename, dependencies[i]);
 
 		if (find_file(filename, "", temp, true, fuzzy_filename)) {
-			strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.')); // Incase copying .paa instead of .tga
+			warningf("Failed to find file %s.\n", filename);
+			continue;
 		} else {
-            warningf("Failed to find file %s.\n", filename);
-            continue;
+			strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.')); // Incase copying .paa instead of .tga
         }
 
         strcpy(filename, tempfolder);
         strcat(filename, dependencies[i]);
 
         if (copy_file(temp, filename)) {
-            errorf("Failed to copy %s to temp folder.\n", temp);
+            errorf("Failed to copy %s to temp folder %s.\n", temp, filename);
             return 3;
         }
 
@@ -263,7 +264,7 @@ int attempt_bis_binarize(char *source, char *target) {
      * exe is not found, a negative integer is returned. 0 is returned on
      * success and a positive integer on failure.
      */
-	infof("  Binarize %s.\n", source);
+	infof("  Setting up %s.\n", source);
 
     extern int current_operation;
     extern char current_target[2048];
@@ -312,6 +313,14 @@ int attempt_bis_binarize(char *source, char *target) {
         errorf("Failed to create temp folder.\n");
         return 1;
     }
+	
+	for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
+		copy_includes(include_folders[i], tempfolder);
+	}
+	if (tempfolder[strlen(tempfolder) - 1] != PATHSEP) {  //copy_includes removes trailing PATHSEP
+		strcat(tempfolder, PATHSEP_STR);
+	}
+	
 
     // Copy P3D Dependencies to temporary folder
     success = get_p3d_dependencies(source, tempfolder, true);
@@ -347,6 +356,7 @@ int attempt_bis_binarize(char *source, char *target) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
+	infof("  Binarize %s.\n", source);
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_tempfolder, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
