@@ -68,9 +68,10 @@ char *constant_value(struct constants *constants, struct constant *constant,
         int num_args, char **args, int value);
 void constant_free(struct constant *constant);
 
-bool matches_includepath(char *path, char *includepath, char *includefolder);
+void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t prefixedpath_size);
+bool matches_includepath(char *path, char *includepath, char *includefolder, bool case_insensitive);
 
-int find_file(char *includepath, char *origin, char *actualpath);
+int find_file(char *includepath, char *origin, char *actualpath, bool case_insensitive, bool check_other_file_ext);
 
 char * resolve_macros(char *string, size_t buffsize, struct constant *constants);
 

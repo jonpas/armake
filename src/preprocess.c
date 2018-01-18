@@ -440,7 +440,50 @@ void constant_free(struct constant *constant) {
 }
 
 
-bool matches_includepath(char *path, char *includepath, char *includefolder) {
+void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t prefixedpath_size) {
+
+	//*prefixedpath = 0;
+	char cwd[2048];
+	char *ptr;
+	strncpy(cwd, path, 2048);
+	ptr = cwd + strlen(cwd);
+
+	while (strcmp(includefolder, cwd) != 0) {
+		char prefixpath[2048];
+
+		while (*ptr != PATHSEP)
+			ptr--;
+		*ptr = 0;
+
+		strncpy(prefixpath, cwd, 2048);
+		strcat(prefixpath, PATHSEP_STR);
+		strcat(prefixpath, "$PBOPREFIX$");
+
+		FILE *f_prefix = fopen(prefixpath, "rb");
+		if (!f_prefix) {
+			continue;
+		}
+
+		fgets(prefixedpath, prefixedpath_size, f_prefix);
+		fclose(f_prefix);
+
+		if (prefixedpath[strlen(prefixedpath) - 1] == '\n')
+			prefixedpath[strlen(prefixedpath) - 1] = 0;
+		if (prefixedpath[strlen(prefixedpath) - 1] == '\r')
+			prefixedpath[strlen(prefixedpath) - 1] = 0;
+		if (prefixedpath[strlen(prefixedpath) - 1] == '\\')
+			prefixedpath[strlen(prefixedpath) - 1] = 0;
+
+		strcat(prefixedpath, path + strlen(cwd));
+
+		for (int i = 0; i < strlen(prefixedpath); i++) {
+			if (prefixedpath[i] == '/')
+				prefixedpath[i] = '\\';
+		}
+	}
+}
+
+bool matches_includepath(char *path, char *includepath, char *includefolder, bool case_insensitive) {
     /*
      * Checks if a given file can be matched to an include path by traversing
      * backwards through the filesystem until a $PBOPREFIX$ file is found.
@@ -448,58 +491,29 @@ bool matches_includepath(char *path, char *includepath, char *includefolder) {
      * included path, true is returned.
      */
 
-    int i;
-    char cwd[2048];
-    char prefixpath[2048];
     char prefixedpath[2048];
-    char *ptr;
-    FILE *f_prefix;
 
-    strncpy(cwd, path, 2048);
-    ptr = cwd + strlen(cwd);
-
-    while (strcmp(includefolder, cwd) != 0) {
-        while (*ptr != PATHSEP)
-            ptr--;
-        *ptr = 0;
-
-        strncpy(prefixpath, cwd, 2048);
-        strcat(prefixpath, PATHSEP_STR);
-        strcat(prefixpath, "$PBOPREFIX$");
-
-        f_prefix = fopen(prefixpath, "rb");
-        if (!f_prefix)
-            continue;
-
-        fgets(prefixedpath, sizeof(prefixedpath), f_prefix);
-        fclose(f_prefix);
-
-        if (prefixedpath[strlen(prefixedpath) - 1] == '\n')
-            prefixedpath[strlen(prefixedpath) - 1] = 0;
-        if (prefixedpath[strlen(prefixedpath) - 1] == '\r')
-            prefixedpath[strlen(prefixedpath) - 1] = 0;
-        if (prefixedpath[strlen(prefixedpath) - 1] == '\\')
-            prefixedpath[strlen(prefixedpath) - 1] = 0;
-
-        strcat(prefixedpath, path + strlen(cwd));
-
-        for (i = 0; i < strlen(prefixedpath); i++) {
-            if (prefixedpath[i] == '/')
-                prefixedpath[i] = '\\';
+	get_prefixpath(path, includefolder, prefixedpath, 2048);
+	if (prefixedpath != NULL) {
+		// compensate for missing leading slash in PBOPREFIX
+        if (case_insensitive) {
+            if (prefixedpath[0] != '\\')
+                return (stricmp(prefixedpath, includepath + 1) == 0);
+            else
+                return (stricmp(prefixedpath, includepath) == 0);
+        } else {
+            if (prefixedpath[0] != '\\')
+                return (strcmp(prefixedpath, includepath + 1) == 0);
+            else
+                return (strcmp(prefixedpath, includepath) == 0);
         }
-
-        // compensate for missing leading slash in PBOPREFIX
-        if (prefixedpath[0] != '\\')
-            return (strcmp(prefixedpath, includepath+1) == 0);
-        else
-            return (strcmp(prefixedpath, includepath) == 0);
     }
 
     return false;
 }
 
 
-int find_file_helper(char *includepath, char *origin, char *includefolder, char *actualpath, char *cwd) {
+int find_file_helper(char *includepath, char *origin, char *includefolder, char *actualpath, char *cwd, bool case_insensitive, bool fuzzy_filename) {
     /*
      * Finds the file referenced in includepath in the includefolder. origin
      * describes the file in which the include is used (used for relative
@@ -537,19 +551,32 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
     while (*ptr != '\\')
         ptr--;
     ptr++;
-
-    strncpy(filename, ptr, 2048);
+	strncpy(filename, ptr, 2048);
 
 #ifdef _WIN32
     if (cwd == NULL)
-        return find_file_helper(includepath, origin, includefolder, actualpath, includefolder);
+        return find_file_helper(includepath, origin, includefolder, actualpath, includefolder, case_insensitive, fuzzy_filename);
+
+    char alternative_filename[2048];
+	char alternative_includepath[2048];
+	if (fuzzy_filename) {
+		if (!stricmp(strrchr(filename, '.'), ".tga")) {
+			strncpy(alternative_filename, filename, 2048);
+			strcpy(strchr(alternative_filename, '.'), ".paa");
+			strncpy(alternative_includepath, includepath, 2048);
+			strcpy(strchr(alternative_includepath, '.'), ".paa");
+		}
+	}
 
     WIN32_FIND_DATA file;
     HANDLE handle = NULL;
     wchar_t wc_cwd[2048];
     mbstowcs(wc_cwd, cwd, 2048);
 
-
+    wchar_t wc_filename[2048];
+    mbstowcs(wc_filename, filename, 2048);
+	wchar_t wc_alternative_filename[2048];
+	mbstowcs(wc_alternative_filename, alternative_filename, 2048);
 
     wchar_t wc_includefolder[2048];
     mbstowcs(wc_includefolder, includefolder, 2048);
@@ -575,14 +602,27 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
         char mask[2048];
         wcstombs(mask, wc_mask, 2048);
         if (file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            if (!find_file_helper(includepath, origin, includefolder, actualpath, mask))
+            if (!find_file_helper(includepath, origin, includefolder, actualpath, mask, case_insensitive, fuzzy_filename))
                 return 0;
         } else {
-            wchar_t wc_filename[2048];
-            mbstowcs(wc_filename, filename, 2048);
-            if (wcscmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder)) {
-                strncpy(actualpath, mask, 2048);
-                return 0;
+            if (case_insensitive) {
+                if (wcsicmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder, case_insensitive)) {
+                    strncpy(actualpath, mask, 2048);
+                    return 0;
+                }
+                if (!(alternative_filename==NULL) && wcsicmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
+                    strncpy(actualpath, mask, 2048);
+                    return 0;
+                }
+            } else {
+                if (wcscmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder, case_insensitive)) {
+                    strncpy(actualpath, mask, 2048);
+                    return 0;
+                }
+                if (!(alternative_filename == NULL) && wcscmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
+                    strncpy(actualpath, mask, 2048);
+                    return 0;
+                }
             }
         }
     } while (FindNextFile(handle, &file));
@@ -638,7 +678,7 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
 }
 
 
-int find_file(char *includepath, char *origin, char *actualpath) {
+int find_file(char *includepath, char *origin, char *actualpath, bool case_insensitive, bool fuzzy_filename) {
     /*
      * Finds the file referenced in includepath in the includefolder. origin
      * describes the file in which the include is used (used for relative
@@ -656,7 +696,7 @@ int find_file(char *includepath, char *origin, char *actualpath) {
     extern char include_folders[MAXINCLUDEFOLDERS][512];
 
     for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
-        success = find_file_helper(includepath, origin, include_folders[i], actualpath, NULL);
+        success = find_file_helper(includepath, origin, include_folders[i], actualpath, NULL, case_insensitive, fuzzy_filename);
 
         if (success != 2)
             return success;
@@ -881,7 +921,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                     return 6;
                 }
                 *strchr(includepath, '"') = 0;
-                if (find_file(includepath, source, actualpath)) {
+                if (find_file(includepath, source, actualpath, false, false)) {
                     lerrorf(source, line, "Failed to find %s.\n", includepath);
                     return 7;
                 }

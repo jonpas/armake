@@ -75,6 +75,7 @@ const char help_message[] =
 "    -z --compress   Compress final PAA where possible.\n"
 "    -t --type       PAA type. One of: DXT1, DXT3, DXT5, ARGB4444, ARGB1555, AI88\n"
 "                        Currently only DXT1 and DXT5 are implemented.\n"
+"    -T --temppath   Temp Directory Location.\n"
 "    -h --help       Show usage information and exit.\n"
 "    -v --version    Print the version number and exit.\n"
 "\n"
@@ -314,6 +315,8 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->packonly = option->value;
         } else if (!strcmp(option->olong, "--type")) {
             args->type = option->value;
+		} else if (!strcmp(option->olong, "--temppath")) {
+			args->temppath = option->value;
         } else if (!strcmp(option->olong, "--version")) {
             args->version = option->value;
         } else if (!strcmp(option->olong, "--warning")) {
@@ -422,6 +425,7 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-k", "--key", 0, 0, NULL},
         {"-p", "--packonly", 0, 0, NULL},
         {"-t", "--type", 0, 0, NULL},
+		{ "-T", "--temppath", 0, 0, NULL },
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };

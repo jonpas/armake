@@ -35,15 +35,17 @@
 #define COLOR_CYAN "\e[1;36m"
 #define COLOR_RESET "\e[0m"
 
-#define OP_BUILD 1
-#define OP_PREPROCESS 2
-#define OP_RAPIFY 3
-#define OP_P3D 4
-#define OP_MODELCONFIG 5
-#define OP_MATERIAL 6
-#define OP_UNPACK 7
-#define OP_DERAPIFY 8
-#define OP_IMAGE 9
+#define OP_BUILD 0
+#define OP_PREPROCESS 1
+#define OP_RAPIFY 2
+#define OP_P3D 3
+#define OP_RTM 4
+#define OP_WRP 5
+#define OP_MODELCONFIG 6
+#define OP_MATERIAL 7
+#define OP_UNPACK 8
+#define OP_DERAPIFY 9
+#define OP_IMAGE 10
 
 
 struct point {

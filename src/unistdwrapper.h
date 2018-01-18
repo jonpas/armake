@@ -26,4 +26,8 @@
 * You need to look at your app and consider whether
 * to call e.g. closesocket().
 */
+
+//  Custom
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
 #endif

@@ -51,6 +51,8 @@ int create_folders(char *path);
 
 int create_temp_folder(char *addon, char *temp_folder, size_t bufsize);
 
+void get_temp_path(char *path, size_t bufsize);
+
 int remove_file(char *path);
 
 int remove_folder(char *folder);
@@ -61,3 +63,4 @@ int traverse_directory(char *root, int (*callback)(char *, char *, char *),
     char *third_arg);
 
 int copy_directory(char *source, char *target);
+int copy_includes(char *source, char *target);

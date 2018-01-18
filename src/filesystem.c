@@ -37,6 +37,9 @@
 #endif
 
 #include "filesystem.h"
+#include "docopt.h"
+#include "preprocess.h"
+#include "utils.h"
 #include "unistdwrapper.h"
 
 
@@ -45,6 +48,7 @@ bool file_exists(char *path) {
     wchar_t *wc_path = malloc(sizeof(*wc_path) * (strlen(path) + 1));
     mbstowcs(wc_path, path, (strlen(path) + 1));
     unsigned long attrs = GetFileAttributes(wc_path);
+    free (wc_path);
     return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
 }
 
@@ -106,12 +110,42 @@ size_t getline(char **lineptr, size_t *n, FILE *stream) {
 #endif
 
 
+void get_temp_path(char *path, size_t bufsize) {
+    if (strlens(args.temppath) == 0) {
+#ifdef _WIN32
+        path[0] = 0;
+        wchar_t wc_path[2048];
+        wchar_t wc_path_tmp[2048];
+        if (GetTempPath(bufsize, wc_path_tmp) > 0) {
+            if ((wc_path_tmp[wcslens(wc_path_tmp) - 1]) == '\\') {
+                wc_path_tmp[wcslens(wc_path_tmp) - 1] = 0;
+            }
+            swprintf(wc_path, 2048, L"%ls\\armake\\%ld\\", wc_path_tmp, GetCurrentProcessId());
+            wcstombs(path, wc_path, bufsize);
+        } else {
+            path = TEMPPATH;
+        }
+        // TODO Add command switch to remove old directories, windows apparently doesn't remove temp files at startup.
+#else
+        strncpy(path, LINUX_TEMPPATH, bufsize);
+        sprintf(path, "%s/armake/%ld/", path, getpid());
+#endif
+    } else {
+        strcpy(path, args.temppath);
+    }
+    if (((path[strlen(path) - 1]) == '\\') || ((path[strlen(path) - 1]) == '/')) {
+        path[strlen(path) - 1] = 0;
+    }
+}
+
+
 int get_temp_name(char *target, char *suffix) {
 #ifdef _WIN32
     wchar_t *wc_target = malloc(sizeof(*target) * (strlen(target) + 1));
     mbstowcs(wc_target, target, 2048);
     if (!GetTempFileName(L".", L"amk", 0, wc_target)) { return 1; }
     wcstombs(target, wc_target, (strlen(target) + 1));
+    free(wc_target);
     strcat(target, suffix);
     return 0;
 #else
@@ -197,30 +231,17 @@ int create_temp_folder(char *addon, char *temp_folder, size_t bufsize) {
      * on success.
      */
 
-    char temp[2048] = TEMPPATH;
+    char temp[2048];
     char addon_sanitized[2048];
     int i;
 
-#ifdef _WIN32
-    temp[0] = 0;
-    wchar_t *wc_temp = malloc(sizeof(*wc_temp) * 2048);
-    mbstowcs(wc_temp, temp, 2048);
-    GetTempPath(2048, wc_temp);
-    wcstombs(temp, wc_temp, 2048);
-    strcat(temp, "armake\\");
-#endif
-
-    temp[strlen(temp) - 1] = 0;
+    get_temp_path(temp, 2048);
 
     for (i = 0; i <= strlen(addon); i++)
         addon_sanitized[i] = (addon[i] == '\\' || addon[i] == '/') ? '_' : addon[i];
 
-    // find a free one
-    for (i = 0; i < 1024; i++) {
-        snprintf(temp_folder, bufsize, "%s_%s_%i%c", temp, addon_sanitized, i, PATHSEP);
-        if (access(temp_folder, F_OK) == -1)
-            break;
-    }
+    snprintf(temp_folder, bufsize, "%s%c%s%c", temp, PATHSEP, addon_sanitized, PATHSEP);
+
 
     if (i == 1024)
         return -1;
@@ -254,7 +275,8 @@ int remove_folder(char *folder) {
 
     // MASSIVE @todo
     char cmd[512];
-    sprintf(cmd, "rmdir %s /s /q", folder);
+    //sprintf(cmd, "rmdir %s /s /q", folder);
+    sprintf(cmd, "rmdir %s /s", folder);
     if (system(cmd))
         return -1;
 
@@ -280,6 +302,9 @@ int copy_file(char *source, char *target) {
      */
 
     // Create the containing folder
+    if (!strcmp(source, target))
+        return 0;
+
     char *containing = malloc(sizeof(*containing) * (strlen(target) + 1));
     int lastsep = 0;
     int i;
@@ -509,6 +534,40 @@ int copy_callback(char *source_root, char *source, char *target_root) {
 }
 
 
+int copy_includes_callback(char *source_root, char *source, char *target_root) {
+    // Remove trailing path seperators
+    if (source_root[strlen(source_root) - 1] == PATHSEP)
+        source_root[strlen(source_root) - 1] = 0;
+    if (target_root[strlen(target_root) - 1] == PATHSEP)
+        target_root[strlen(target_root) - 1] = 0;
+
+    if (strstr(source, source_root) != source)
+        return -1;
+	
+    int status = -1;
+	char fileext[64];
+	if (strrchr(source, '.') != NULL) {
+		strcpy(fileext, strrchr(source, '.'));
+		if (fileext != NULL && (!strcmp(fileext, ".h")) || (!strcmp(fileext, ".hpp"))) {
+			char prefixedpath[2048];
+			get_prefixpath(source, source_root, prefixedpath, sizeof(prefixedpath));
+
+			char *target = malloc(sizeof(*target)* (strlen(prefixedpath) + strlen(target_root) + 1 + 1)); // assume worst case
+			target[0] = 0;
+			strcat(target, target_root);
+			strcat(target, PATHSEP_STR);
+			strcat(target, prefixedpath);
+			infof("DEBUG: %s : %s\n", source, target);
+			status = copy_file(source, target);
+			free(target);
+		}
+	}
+
+
+    return 0;
+}
+
+
 int copy_directory(char *source, char *target) {
     /*
      * Copy the entire directory given with source to the target folder.
@@ -522,4 +581,20 @@ int copy_directory(char *source, char *target) {
         target[strlen(target) - 1] = 0;
 
     return traverse_directory(source, copy_callback, target);
+}
+
+
+int copy_includes(char *source, char *target) {
+    /*
+     * Copy the entire directory given with source to the target folder.
+     * Returns 0 on success and a non-zero integer on failure.
+     */
+
+    // Remove trailing path seperators
+    if (source[strlen(source) - 1] == PATHSEP)
+        source[strlen(source) - 1] = 0;
+    if (target[strlen(target) - 1] == PATHSEP)
+        target[strlen(target) - 1] = 0;
+
+    return traverse_directory(source, copy_includes_callback, target);
 }

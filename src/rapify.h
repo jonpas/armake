@@ -24,6 +24,11 @@
 
 #define MAXCLASSES 4096
 
+#ifdef _WIN32
+#include <io.h>
+#define isatty _isatty
+#endif
+
 
 enum {
     TYPE_CLASS,

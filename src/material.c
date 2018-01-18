@@ -149,7 +149,7 @@ int read_material(struct material *material) {
     material->dummy_texture.transform_index = 0;
     material->dummy_texture.type11_bool = 0;
 
-    if (find_file(temp, "", actual_path)) {
+    if (find_file(temp, "", actual_path, false, false)) {
         warningf("Failed to find material \"%s\".\n", temp);
         return 1;
     }

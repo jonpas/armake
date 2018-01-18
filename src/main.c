@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
             for (j = 0; j < MAXINCLUDEFOLDERS && include_folders[j][0] != 0; j++);
             strncpy(include_folders[j], argv[i + 1], sizeof(include_folders[j]));
             if (include_folders[j][strlen(include_folders[j]) - 1] == PATHSEP)
-                include_folders[j][strlen(include_folders[j]) - 1] = 0;
+            include_folders[j][strlen(include_folders[j]) - 1] = 0;
         }
         if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--warning") == 0) {
             for (j = 0; j < MAXWARNINGS && muted_warnings[j][0] != 0; j++);
@@ -102,6 +102,14 @@ int main(int argc, char *argv[]) {
 
     #ifdef _WIN32
         found_bis_binarize = check_bis_binarize();
+        if (found_bis_binarize) {
+            wchar_t wc_include_folder[512];
+            for (i = 1; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) { //Skip Current Directory
+                mbstowcs(wc_include_folder, include_folders[i], 512);
+                wcscat(wc_addonpaths, L" -addon=");
+                wcscat(wc_addonpaths, wc_include_folder);
+            }
+        };
     #endif
 
     if (args.binarize)

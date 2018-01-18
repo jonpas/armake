@@ -295,6 +295,14 @@ int cmd_build() {
         return 3;
     }
 
+#ifdef _WIN32
+	if (found_bis_binarize) {
+		for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
+			copy_includes(include_folders[i], tempfolder);
+		}
+	}
+#endif
+
     // preprocess and binarize stuff if required
     infof("Working, Please Wait...\n");
     char nobinpath[1024];
@@ -330,6 +338,22 @@ int cmd_build() {
                 return 5;
             }
         }
+#ifdef _WIN32p
+        infof("Binarizing p3ds + wrps...\n"); // Should be these type of files left to binarize
+        if (attempt_bis_bulk_binarize(tempfolder)) {
+            errorf("Failed to bulk binarize some files.\n");
+            remove_file(args.target);
+            remove_folder(tempfolder);
+            return 4;
+        }
+        infof("Creating texheader.bin ......\n");
+        if (attempt_bis_texheader(tempfolder)) {
+            errorf("Failed to create texheader.bin.\n");
+            remove_file(args.target);
+            remove_folder(tempfolder);
+            return 4;
+        }
+#endif
     }
 
     current_operation = OP_BUILD;

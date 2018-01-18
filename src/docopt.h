@@ -61,6 +61,7 @@ typedef struct {
 	char *target;
 	char *wname;
 	char *xlist;
+	char *temppath;
 	/* options without arguments */
 	int compress;
 	int exclude;
@@ -117,6 +118,9 @@ typedef struct Tokens {
 DocoptArgs args;
 char exclude_files[MAXEXCLUDEFILES][512];
 char include_folders[MAXINCLUDEFOLDERS][512];
+#ifdef _WIN32
+wchar_t wc_addonpaths[MAXINCLUDEFOLDERS*(512+8)];  // -addon=
+#endif
 char muted_warnings[MAXWARNINGS][512];
 
 
