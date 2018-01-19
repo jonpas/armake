@@ -285,7 +285,7 @@ int cmd_build() {
 #endif
 
     // create and prepare temp folder
-    infof("Setting up Temp Files...\n");
+    infof("Preparing temp folder...\n");
     char tempfolder[1024];
     if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
         errorf("Failed to create temp folder.\n");
@@ -311,7 +311,6 @@ int cmd_build() {
 #endif
 
     // preprocess and binarize stuff if required
-    infof("Working, Please Wait...\n");
     char nobinpath[1024];
     char notestpath[1024];
     strcpy(nobinpath, prefixpath);
@@ -319,7 +318,7 @@ int cmd_build() {
     strcpy(nobinpath + strlen(nobinpath) - 11, "$NOBIN$");
     strcpy(notestpath + strlen(notestpath) - 11, "$NOBIN-NOTEST$");
     if (!args.packonly && access(nobinpath, F_OK) == -1 && access(notestpath, F_OK) == -1) {
-        infof("Binarizing...\n");
+        infof("Binarizing configs/rtms...\n");
         if (traverse_directory(tempfolder, binarize_callback, "")) {
             current_operation = OP_BUILD;
             strcpy(current_target, args.source);
@@ -346,7 +345,6 @@ int cmd_build() {
             }
         }
 #ifdef _WIN32
-        infof("Binarizing p3ds + wrps...\n"); // Should be these type of files left to binarize
         if (attempt_bis_bulk_binarize(tempfolder)) {
             errorf("Failed to bulk binarize some files.\n");
             remove_file(args.target);

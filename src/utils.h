@@ -58,6 +58,8 @@ struct point {
 int current_operation;
 char current_target[2048];
 
+bool progress_output;
+
 
 #ifdef _WIN32
 char *strndup(const char *s, size_t n);
@@ -66,6 +68,8 @@ char *strchrnul(const char *s, int c);
 #else
 int stricmp(char *a, char *b);
 #endif
+
+void progressf();
 
 void infof(char *format, ...);
 

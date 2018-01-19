@@ -71,8 +71,23 @@ int stricmp(char *a, char *b) {
 
 #endif
 
+void newlinef() {
+    progress_output = false;
+    fprintf(stdout, "\n");
+    fflush(stdout);
+}
+
+void progressf() {
+    progress_output = true;
+    fprintf(stdout, ".");
+    fflush(stdout);
+}
+
 
 void infof(char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     char buffer[4096];
     va_list argptr;
 
@@ -91,6 +106,9 @@ void infof(char *format, ...) {
 
 
 void debugf(char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     char buffer[4096];
     va_list argptr;
 
@@ -109,6 +127,9 @@ void debugf(char *format, ...) {
 
 
 void warningf(char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     extern int current_operation;
     extern char current_target[2048];
     char filename[2048];
@@ -152,6 +173,9 @@ void warningf(char *format, ...) {
 
 
 void lwarningf(char *file, int line, char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     char buffer[4096];
     va_list argptr;
 
@@ -166,6 +190,9 @@ void lwarningf(char *file, int line, char *format, ...) {
 
 
 bool warning_muted(char *name) {
+    if (progress_output)
+        newlinef();
+
     extern char muted_warnings[MAXWARNINGS][512];
     int i;
 
@@ -178,6 +205,9 @@ bool warning_muted(char *name) {
 
 
 void nwarningf(char *name, char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     char buffer[4096];
     char temp[4096];
     va_list argptr;
@@ -199,6 +229,9 @@ void nwarningf(char *name, char *format, ...) {
 
 
 void lnwarningf(char *file, int line, char *name, char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     char buffer[4096];
     va_list argptr;
 
@@ -214,6 +247,9 @@ void lnwarningf(char *file, int line, char *name, char *format, ...) {
 
 
 void errorf(char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     extern int current_operation;
     extern char current_target[2048];
     char buffer[4096];
@@ -234,6 +270,9 @@ void errorf(char *format, ...) {
 
 
 void lerrorf(char *file, int line, char *format, ...) {
+    if (progress_output)
+        newlinef();
+
     char buffer[4096];
     va_list argptr;
 
@@ -248,6 +287,9 @@ void lerrorf(char *file, int line, char *format, ...) {
 
 
 int get_line_number(FILE *f_source) {
+    if (progress_output)
+        newlinef();
+
     int line;
     long fp_start;
 

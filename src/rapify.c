@@ -299,6 +299,178 @@ void rapify_class(struct class *class, FILE *f_target) {
     }
 }
 
+
+void parse_class_dependencies(struct class *result, struct filelist **files)
+{
+    struct variable *config_variable;
+    struct class *config_class;
+    struct definition *tmp;
+
+    tmp = result->content->head;
+    struct filelist *files_ptr;
+    files_ptr = *files;
+    while (tmp != NULL) {
+        if (tmp->type == TYPE_VAR && ((struct class *)(tmp->content))->content != NULL) {
+            config_variable = (struct variable *)(tmp->content);
+            if ((stricmp(config_variable->name, "texture") == 0) || (stricmp(config_variable->name, "surfaceInfo")) == 0) {
+                if ((config_variable->expression->type) == TYPE_STRING) {
+                    if (files_ptr == NULL) {
+                        files_ptr = malloc(sizeof(struct filelist));
+                        if (*files == NULL) {
+                            *files = files_ptr;
+                        }
+                    } else {
+                        while ((files_ptr->next) != NULL) {
+                            files_ptr = files_ptr->next;
+                        }
+                        files_ptr->next = malloc(sizeof(struct filelist));
+                        files_ptr = files_ptr->next;
+                    }
+                    strncpy(files_ptr->filename, config_variable->expression->string_value, sizeof(files_ptr->filename));
+                    files_ptr->next = NULL;
+                }
+            }
+        }
+        if (tmp->type == TYPE_CLASS && ((struct class *)(tmp->content))->content != NULL) {
+            config_class = (struct class *)(tmp->content);
+            parse_class_dependencies(config_class, files);
+        }
+        tmp = tmp->next;
+    }
+}
+
+
+int parse_file_get_dependencies(char *source, struct filelist **files) {
+    /*
+    * Resolves macros/includes and rapifies the given file. If source and
+    * target are identical, the target is overwritten.
+    *
+    * Returns 0 on success and a positive integer on failure.
+    */
+
+    FILE *f_temp;
+
+    int i;
+    int success;
+    char buffer[4096];
+    uint32_t enum_offset = 0;
+    struct constants *constants;
+    struct lineref *lineref;
+
+    current_operation = OP_RAPIFY;
+    strcpy(current_target, source);
+
+    // Check if the file is already rapified
+    f_temp = fopen(source, "rb");
+    if (!f_temp) {
+        errorf("Failed to open %s.\n", source);
+        return 1;
+    }
+
+    fread(buffer, 4, 1, f_temp);
+    if (strncmp(buffer, "\0raP", 4) == 0) {
+        return 0;
+    }
+    else {
+        fclose(f_temp);
+    }
+
+#ifdef _WIN32
+    char temp_name[2048];
+    wchar_t wc_temp_name[2048];
+    if (!GetTempFileName(L".", L"amk", 0, wc_temp_name)) {
+        errorf("Failed to get temp file name (system error %i).\n", GetLastError());
+        return 1;
+    }
+    wcstombs(temp_name, wc_temp_name, 2048);
+    f_temp = fopen(temp_name, "wb+");
+#else
+    f_temp = tmpfile();
+#endif
+
+    if (!f_temp) {
+        errorf("Failed to open temp file.\n");
+#ifdef _WIN32
+        remove_file(temp_name);
+#endif
+        return 1;
+    }
+
+    for (i = 0; i < MAXINCLUDES; i++)
+        include_stack[i][0] = 0;
+
+    constants = constants_init();
+
+    lineref = (struct lineref *)malloc(sizeof(struct lineref));
+    lineref->num_files = 0;
+    lineref->num_lines = 0;
+    lineref->file_index = (uint32_t *)malloc(sizeof(uint32_t) * LINEINTERVAL);
+    lineref->line_number = (uint32_t *)malloc(sizeof(uint32_t) * LINEINTERVAL);
+
+    success = preprocess(source, f_temp, constants, lineref);
+
+    current_operation = OP_RAPIFY;
+    strcpy(current_target, source);
+
+    if (success) {
+        errorf("Failed to preprocess %s.\n", source);
+        fclose(f_temp);
+#ifdef _WIN32
+        remove_file(temp_name);
+#endif
+        return success;
+    }
+
+#if 0
+    FILE *f_dump;
+
+    char dump_name[2048];
+    sprintf(dump_name, "armake_preprocessed_%u.dump", (unsigned)time(NULL));
+    printf("Done with preprocessing, dumping preprocessed config to %s.\n", dump_name);
+
+    f_dump = fopen(dump_name, "wb");
+    fseek(f_temp, 0, SEEK_END);
+    datasize = ftell(f_temp);
+
+    fseek(f_temp, 0, SEEK_SET);
+    for (i = 0; datasize - i >= sizeof(buffer); i += sizeof(buffer)) {
+        fread(buffer, sizeof(buffer), 1, f_temp);
+        fwrite(buffer, sizeof(buffer), 1, f_dump);
+    }
+
+    fread(buffer, datasize - i, 1, f_temp);
+    fwrite(buffer, datasize - i, 1, f_dump);
+
+    fclose(f_dump);
+#endif
+
+    fseek(f_temp, 0, SEEK_SET);
+    struct class *result;
+    result = parse_file(f_temp, lineref);
+
+    if (result == NULL) {
+        errorf("Failed to parse config.\n");
+        return 1;
+    }
+
+    parse_class_dependencies(result, files);
+
+
+#ifdef _WIN32
+    remove_file(temp_name);
+#endif
+
+    constants_free(constants);
+
+    free(lineref->file_index);
+    free(lineref->line_number);
+    free(lineref);
+
+    free_class(result);
+
+    return 0;
+}
+
 int rapify_file(char *source, char *target) {
     /*
      * Resolves macros/includes and rapifies the given file. If source and

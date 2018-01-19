@@ -65,51 +65,37 @@ int check_bis_binarize() {
 
 
 int get_rvmat_dependencies(char *filename, char *tempfolder) {
-    // TODO split rvmat into recursive function i.e for .rvmats / .bisurfs (penetration)
-    FILE *f_rvmat_source;
-    f_rvmat_source = fopen(filename, "r");
-    char buffer[2048];
-    while (fgets(buffer, 2048, f_rvmat_source)) {
-        trim(buffer, 2048);
-        if (strlens(buffer) > strlens("texture")) {
-            if (strncmp("texture", buffer, strlen("texture")) == 0) {
-                char *texture_path = strchr(buffer, '"');
-                if (strlens(texture_path) > 2) {
-                    texture_path = texture_path + 1;
-                    char *texture_path_end = strrchr(buffer, '"');
-                    if (strlens(texture_path) > 2) {
-                        *texture_path_end = 0;
-                        if (strncmp(texture_path, "#", 1) != 0) {
-                            char texture_path_corrected[2048] = "\\";
-                            strcat(texture_path_corrected, texture_path);
-                            char temp_filename[2048];
-                            strcpy(temp_filename, tempfolder);
-                            strcat(temp_filename, texture_path);
-                            if (!file_exists(temp_filename)) {  // Check if file already exists in Temp //TODO add support for checking paa instead of tga etc
-                                if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
-                                    warningf("Failed to find file %s\n", filename);
-                                }
-                                else {
-                                    strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
-                                    if (copy_file(texture_path_corrected, temp_filename)) {
-                                        errorf("Failed to copy %s to temp folder %s.\n", texture_path_corrected, temp_filename);
-                                        return 3;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else {
-                        errorf("Parsing rvmat: ", filename, "\n\t\t", buffer, "\n");
-                    }
+    struct filelist *files_previous;
+    struct filelist *files;
+    files = NULL;
+    //infof("DEBUG: %s\n", filename);
+    parse_file_get_dependencies(filename, &files);
+    while (files != NULL) {
+        progressf();
+        if ((strncmp(files->filename, "#", 1) != 0) && (strncmp(files->filename, "(", 1) != 0)) {
+            char texture_path_corrected[2048] = "\\";
+            strcat(texture_path_corrected, files->filename);
+            char temp_filename[2048];
+            strcpy(temp_filename, tempfolder);
+            strcat(temp_filename, files->filename);
+            if (!file_exists(temp_filename)) {  // Check if file already exists in Temp //TODO add support for checking paa instead of tga etc
+                if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
+                    warningf("Failed to find 11 file %s\n", filename);
                 }
                 else {
-                    errorf("Parsing rvmat: ", filename, "\n\t\t", buffer, "\n");
+                    strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
+                    if (copy_file(texture_path_corrected, temp_filename)) {
+                        errorf("Failed to copy 11 %s to temp folder %s.\n", texture_path_corrected, temp_filename);
+                        return 3;
+                    }
                 }
             }
         }
+
+        files_previous = files;
+        files = files->next;
+        free(files_previous);
     }
-    fclose(f_rvmat_source);
     return 0;
 }
 
@@ -428,6 +414,7 @@ int attempt_bis_bulk_binarize(char *source) {
     strcat(temppath, PATHSEP_STR);
     mbstowcs(wc_temppath, temppath, 2048);
 
+    infof("Checking for dependencies...\n");
     copy_bulk_p3ds_dependencies(source, temppath);
 
     if (wcslens(wc_addonpaths) <= 0) {
@@ -453,6 +440,7 @@ int attempt_bis_bulk_binarize(char *source) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
+    infof("Binarzing bulk...\n");
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);

@@ -73,6 +73,10 @@ struct expression {
     struct expression *next;
 };
 
+struct filelist {
+    char filename[2048];
+    struct filelist *next;
+};
 
 struct class *parse_file(FILE *f, struct lineref *lineref);
 
@@ -103,3 +107,5 @@ void rapify_variable(struct variable *var, FILE *f_target);
 void rapify_class(struct class *class, FILE *f_target);
 
 int rapify_file(char *source, char *target);
+
+int parse_file_get_dependencies(char *source, struct filelist **files);
