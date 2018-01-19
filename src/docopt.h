@@ -139,6 +139,6 @@ int parse_argcmd(Tokens *ts, Elements *elements);
 int parse_args(Tokens *ts, Elements *elements);
 
 int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
-                    const char *version);
+                  const char *version);
 
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version);

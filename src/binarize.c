@@ -414,7 +414,7 @@ int attempt_bis_bulk_binarize(char *source) {
     strcat(temppath, PATHSEP_STR);
     mbstowcs(wc_temppath, temppath, 2048);
 
-    infof("Checking for dependencies...\n");
+    infof("Checking for p3d(s) dependencies...\n");
     copy_bulk_p3ds_dependencies(source, temppath);
 
     if (wcslens(wc_addonpaths) <= 0) {

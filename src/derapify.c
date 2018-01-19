@@ -27,7 +27,6 @@
 #include <windows.h>
 #endif
 
-
 #include "filesystem.h"
 #include "rapify.h"
 #include "utils.h"

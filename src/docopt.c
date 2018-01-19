@@ -425,7 +425,7 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-k", "--key", 0, 0, NULL},
         {"-p", "--packonly", 0, 0, NULL},
         {"-t", "--type", 0, 0, NULL},
-        { "-T", "--temppath", 0, 0, NULL },
+        {"-T", "--temppath", 0, 0, NULL },
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };

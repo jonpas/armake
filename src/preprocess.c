@@ -443,6 +443,7 @@ void constant_free(struct constant *constant) {
 void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t prefixedpath_size) {
 
     //*prefixedpath = 0;
+    int i;
     char cwd[2048];
     char *ptr;
     strncpy(cwd, path, 2048);
@@ -476,7 +477,7 @@ void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t 
 
         strcat(prefixedpath, path + strlen(cwd));
 
-        for (int i = 0; i < strlen(prefixedpath); i++) {
+        for (i = 0; i < strlen(prefixedpath); i++) {
             if (prefixedpath[i] == '/')
                 prefixedpath[i] = '\\';
         }
