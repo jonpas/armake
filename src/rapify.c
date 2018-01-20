@@ -370,8 +370,7 @@ int parse_file_get_dependencies(char *source, struct filelist **files) {
     if (strncmp(buffer, "\0raP", 4) == 0) {
         fclose(f_temp);
         return 0;
-    }
-    else {
+    } else {
         fclose(f_temp);
     }
 
@@ -447,6 +446,7 @@ int parse_file_get_dependencies(char *source, struct filelist **files) {
     fseek(f_temp, 0, SEEK_SET);
     struct class *result;
     result = parse_file(f_temp, lineref);
+    fclose(f_temp);
 
     if (result == NULL) {
         errorf("Failed to parse config.\n");

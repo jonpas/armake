@@ -84,12 +84,13 @@ int get_rvmat_dependencies(char *filename, char *tempfolder) {
     while (files != NULL) {
         progressf();
         if ((strncmp(files->filename, "#", 1) != 0) && (strncmp(files->filename, "(", 1) != 0)) {
-            char texture_path_corrected[2048] = "\\";
+            char texture_path_corrected[2048] = PATHSEP_STR;
             strcat(texture_path_corrected, files->filename);
             char temp_filename[2048];
             strcpy(temp_filename, tempfolder);
+            strcat(temp_filename, PATHSEP_STR);
             strcat(temp_filename, files->filename);
-            if (!file_exists(temp_filename)) {  // Check if file already exists in Temp //TODO add support for checking paa instead of tga etc
+            if (!file_exists_fuzzy(temp_filename)) { 
                 if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
                     warningf("Failed to find 11 file %s\n", filename);
                 }
@@ -111,7 +112,7 @@ int get_rvmat_dependencies(char *filename, char *tempfolder) {
 }
 
 
-int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
+int get_p3d_dependencies(char *source, char *tempfolder_root, bool bulk_binarize) {
     /*
     * Copies p3d depenencies to tempfolder location
     * i.e if p3d is using textures/rvmats from a3/  need to copy this into temp folder for BI binarize
@@ -189,52 +190,12 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
     free(mlod_lods);
 
 
-    sprintf(temp, "%s%s", tempfolder, (strrchr(source, '\\') + 1));
     if (!bulk_binarize) {
+        sprintf(temp, "%s%s", tempfolder_root, (strrchr(source, '\\') + 1));
         if (copy_file(source, temp)) {
             errorf("Failed to copy p3d to temp folder.\n");
             return 1;
         }
-
-        // Try to find the required files and copy them there too
-        // Copy <config>.cpp
-        strcpy(temp, source);
-        strcpy(strrchr(temp, '\\') + 1, "config.cpp");
-        strcpy(filename, tempfolder);
-        strcat(filename, "config.cpp");
-        copy_file(temp, filename);
-
-        // Copy <model>.cfg
-        strcpy(temp, source);
-        strcpy(strrchr(temp, '\\') + 1, "model.cfg");
-        strcpy(filename, tempfolder);
-        strcat(filename, "model.cfg");
-        copy_file(temp, filename);
-
-        // Copy <model_name>.cfg
-        strcpy(temp, source);
-        strcpy(strrchr(temp, '.') + 1, "cfg");
-        strcpy(filename, tempfolder);
-        strcpy(strrchr(filename, '\\') + 1, strrchr(temp, '\\') + 1);
-        copy_file(temp, filename);
-
-        // Copy <directory_name>.cfg -> <temp_directory_name>.cfg
-        char directoryname[2048];
-        strcpy(temp, source);
-        *strrchr(temp, '\\') = 0;
-        strcpy(directoryname, strrchr(temp, '\\') + 1);
-        strcat(directoryname, ".cfg");
-        strcpy(temp, source);
-        strcpy(strrchr(temp, '\\') + 1, directoryname);
-
-        char tempdirectoryname[2048];
-        strcpy(filename, tempfolder);
-        *strrchr(filename, '\\') = 0;
-        strcpy(tempdirectoryname, strrchr(filename, '\\') + 1);
-        strcat(tempdirectoryname, ".cfg");
-        strcpy(filename, tempfolder);
-        strcpy(strrchr(filename, '\\') + 1, tempdirectoryname);
-        copy_file(temp, filename);
     }
 
 
@@ -242,13 +203,16 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
         if (dependencies[i] == 0)
             break;
 
-        strcpy(filename, tempfolder);
-        if (dependencies[i][0] != '\\')
+        strcpy(filename, tempfolder_root);
+        strcat(filename, PATHSEP_STR);
+        
+        if (dependencies[i][0] != '\\') {
             strcat(filename, dependencies[i]);
-        else
-            strcat(filename, dependencies[i]+1);
-
-        if (!file_exists(filename)) {
+        } else {
+            strcat(filename, dependencies[i] + 1);
+        }
+        
+        if (!file_exists_fuzzy(filename)) {
             *filename = 0;
             *temp = 0;
             if (dependencies[i][0] != '\\')
@@ -262,7 +226,8 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
                 strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.'));
             }
 
-            strcpy(filename, tempfolder);
+            strcpy(filename, tempfolder_root);
+            strcat(filename, PATHSEP_STR);
             strcat(filename, dependencies[i]);
 
             if (copy_file(temp, filename)) {
@@ -272,7 +237,7 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
         }
         char *ext = strrchr(filename, '.');
         if ((ext != NULL) && (stricmp(ext, ".rvmat") == 0))
-            get_rvmat_dependencies(filename, tempfolder);
+            get_rvmat_dependencies(filename, tempfolder_root);
 
 
         free(dependencies[i]);
@@ -430,7 +395,7 @@ int attempt_bis_bulk_binarize(char *source) {
     mbstowcs(wc_temppath, temppath, 2048);
 
     infof("Checking for P3D(s) for dependencies...\n");
-    copy_bulk_p3ds_dependencies(source, temppath);
+    copy_bulk_p3ds_dependencies(source);
 
     if (wcslens(wc_addonpaths) <= 0) {
         swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls",

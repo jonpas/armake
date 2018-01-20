@@ -55,6 +55,26 @@ bool file_exists(char *path) {
     return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
 }
 
+bool file_exists_fuzzy(char *path) {
+    wchar_t *wc_path = malloc(sizeof(*wc_path) * (strlen(path) + 1));
+    mbstowcs(wc_path, path, (strlen(path) + 1));
+    unsigned long attrs = GetFileAttributes(wc_path);
+
+    int status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+    if (!status)
+        if (!stricmp(strrchr(path, '.'), ".tga")) {
+            char alternative_path[2048];
+            strncpy(alternative_path, path, sizeof(alternative_path));
+            strcpy(strchr(alternative_path, '.'), ".paa");
+            mbstowcs(wc_path, alternative_path, (strlen(alternative_path) + 1));
+            attrs = GetFileAttributes(wc_path);
+            status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+        }
+
+    free(wc_path);
+    return status;
+}
+
 bool wc_file_exists(wchar_t *wc_path) {
     unsigned long attrs = GetFileAttributes(wc_path);
     return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
@@ -241,7 +261,7 @@ int create_temp_folder(char *addon, char *temp_folder, size_t bufsize) {
     get_temp_path(temp, 2048);
 
     for (i = 0; i <= strlen(addon); i++)
-        addon_sanitized[i] = (addon[i] == '\\' || addon[i] == '/') ? '_' : addon[i];
+        addon_sanitized[i] = (addon[i] == '\\' || addon[i] == '/') ? PATHSEP : addon[i];
 
     snprintf(temp_folder, bufsize, "%s%c%s%c", temp, PATHSEP, addon_sanitized, PATHSEP);
 
@@ -565,23 +585,31 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 
     int status = -1;
     char fileext[64];
+    char filename[1024];
+
     if (strrchr(source, '.') != NULL) {
         strcpy(fileext, strrchr(source, '.'));
-        if (fileext != NULL && (!strcmp(fileext, ".h")) || (!strcmp(fileext, ".hpp"))) {
-            char prefixedpath[2048];
-            get_prefixpath(source, source_root, prefixedpath, sizeof(prefixedpath));
-
-            char *target = malloc(sizeof(*target)* (strlen(prefixedpath) + strlen(target_root) + 1 + 1)); // assume worst case
-            target[0] = 0;
-            strcat(target, target_root);
-            strcat(target, PATHSEP_STR);
-            strcat(target, prefixedpath);
-            //infof("DEBUG: %s -> %s\n", source, target);
-            status = copy_file(source, target);
-            free(target);
-        }
+        if (fileext != NULL && (!stricmp(fileext, ".h")) || (!stricmp(fileext, ".hpp")))
+            status = 0;
+    } else {
+        strcpy(filename, strrchr(source, PATHSEP) + 1);
+        if (!stricmp(filename, "$PBOPREFIX$"))
+            status = 0;
     }
+    if (status == 0) {
+        //$PBOPREFIX$ is used to signify new PBO start, when packing directories recursively
+        char prefixedpath[2048];
+        get_prefixpath(source, source_root, prefixedpath, sizeof(prefixedpath));
 
+        char *target = malloc(sizeof(*target)* (strlen(prefixedpath) + strlen(target_root) + 1 + 1)); // assume worst case
+        target[0] = 0;
+        strcat(target, target_root);
+        strcat(target, PATHSEP_STR);
+        strcat(target, prefixedpath);
+        //infof("DEBUG: %s -> %s\n", source, target);
+        status = copy_file(source, target);
+        free(target);
+    }
     return 0;
 }
 
@@ -605,6 +633,7 @@ int copy_directory(char *source, char *target) {
 int copy_includes(char *source, char *target) {
     /*
      * Copy the all include files (via file extension) recursively in source to the target folder.
+	 * Also copies $PBOPREFIX$ aswell
      * Returns 0 on success and a non-zero integer on failure.
      */
 
@@ -618,12 +647,12 @@ int copy_includes(char *source, char *target) {
 }
 
 
-int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder) {
+int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder_root) {
     char *ext = strrchr(source, '.');
     if ((ext != NULL) && (!stricmp(ext, ".p3d"))) {
         if (is_mlod(source) == 0) {
             progressf();
-            int success = get_p3d_dependencies(source, tempfolder, true);
+            int success = get_p3d_dependencies(source, tempfolder_root, true);
             if (success > 0)
                 return success;
         } else {
@@ -636,11 +665,14 @@ int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *
 }
 
 
-int copy_bulk_p3ds_dependencies(char *source, char *tempfolder) {
+int copy_bulk_p3ds_dependencies(char *source) {
     /*
     * Recursively scans p3ds, checks if MLOD/OLOD.
     * Renames OLODs to filename.p3d.ignore (to prevent binarize crash)
     * Gets file dependencies for MLOD p3ds
     */
-    return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder);
+
+    char tempfolder_root[2048];
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+    return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder_root);
 }

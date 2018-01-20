@@ -351,11 +351,10 @@ int cmd_build() {
 
 #ifdef _WIN32
     if (found_bis_binarize) {
-        char includetempfolder[sizeof(tempfolder)];
-        strcpy(includetempfolder, tempfolder);
-        *strrchr(includetempfolder, PATHSEP) = 0;
+        char tempfolder_root[2048];
+        get_temp_path(tempfolder_root, sizeof(tempfolder_root));
         for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
-            copy_includes(include_folders[i], includetempfolder);
+            copy_includes(include_folders[i], tempfolder_root);
         }
     }
 #endif
