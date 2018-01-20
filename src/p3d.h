@@ -304,6 +304,8 @@ struct model_info {
     uint32_t always_0;
 };
 
+int is_mlod(char *source);
+
 int read_lods(FILE *f_source, struct mlod_lod *mlod_lods, uint32_t num_lods);
 
 int mlod2odol(char *source, char *target);

@@ -30,6 +30,7 @@
 #include <fts.h>
 #endif
 
+#include "build.h"
 #include "docopt.h"
 #include "filesystem.h"
 #include "utils.h"
@@ -45,7 +46,12 @@ bool warned_bi_not_found = false;
 
 #ifdef _WIN32
 int check_bis_binarize() {
-    // Find binarize.exe
+    /*
+     * Attempts to find BI binarize.exe for binarization. If the
+     * exe is not found, a negative integer is returned. 0 is returned on
+     * success and a positive integer on failure.
+     */
+
     long unsigned buffsize;
     long success;
 
@@ -65,6 +71,11 @@ int check_bis_binarize() {
 
 
 int get_rvmat_dependencies(char *filename, char *tempfolder) {
+    /*
+    * Copies filename rvmat depenencies to tempfolder location
+    * i.e if rvmat is using textures/bisurf from a3/, need to copy this into temp folder for BI binarize
+    */
+
     struct filelist *files_previous;
     struct filelist *files;
     files = NULL;
@@ -101,6 +112,10 @@ int get_rvmat_dependencies(char *filename, char *tempfolder) {
 
 
 int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
+    /*
+    * Copies p3d depenencies to tempfolder location
+    * i.e if p3d is using textures/rvmats from a3/  need to copy this into temp folder for BI binarize
+    */
     char temp[2048];
     char filename[2048];
     char *dependencies[MAXTEXTURES];
@@ -268,7 +283,7 @@ int get_p3d_dependencies(char *source, char *tempfolder, bool bulk_binarize) {
 
 int attempt_bis_binarize(char *source, char *target) {
     /*
-     * Attempts to find and use the BI binarize.exe for binarization. If the
+     * Attempts to use the BI binarize.exe for binarization. If the
      * exe is not found, a negative integer is returned. 0 is returned on
      * success and a positive integer on failure.
      */
@@ -392,7 +407,7 @@ int attempt_bis_binarize(char *source, char *target) {
 
 int attempt_bis_bulk_binarize(char *source) {
     /*
-    * Attempts to find and use the BI binarize.exe for binarization. If the
+    * Attempts to use the BI binarize.exe to binarization source folder. If the
     * exe is not found, a negative integer is returned. 0 is returned on
     * success and a positive integer on failure.
     */
@@ -414,7 +429,7 @@ int attempt_bis_bulk_binarize(char *source) {
     strcat(temppath, PATHSEP_STR);
     mbstowcs(wc_temppath, temppath, 2048);
 
-    infof("Checking for p3d(s) dependencies...\n");
+    infof("Checking for P3D(s) for dependencies...\n");
     copy_bulk_p3ds_dependencies(source, temppath);
 
     if (wcslens(wc_addonpaths) <= 0) {
@@ -426,7 +441,7 @@ int attempt_bis_bulk_binarize(char *source) {
     }
 
 
-    if (!getenv("BIOUTPUT")) {
+    if (getenv("BIOUTPUT")) {
         char *command = malloc(sizeof(char) * (wc_command_len + 1));
         wcstombs(command, wc_command, wc_command_len);
         debugf("cmdline: %s\n", command);
@@ -450,6 +465,9 @@ int attempt_bis_bulk_binarize(char *source) {
         free(wc_command);
         return 3;
     }
+    
+    infof("Restoring PreBinarized P3Ds...\n");
+    build_revert_ignores();
 
     if (getenv("BIOUTPUT"))
         debugf("done with binarize.exe\n");
@@ -460,6 +478,11 @@ int attempt_bis_bulk_binarize(char *source) {
 
 
 int attempt_bis_texheader(char *target) {
+    /*
+    * Attempts to use the BI binarize.exe to create textheader.bin. If the
+    * exe is not found, a negative integer is returned. 0 is returned on
+    * success and a positive integer on failure.
+    */
     SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
     STARTUPINFO info = { sizeof(info) };
     PROCESS_INFORMATION processInfo;
@@ -498,7 +521,7 @@ int attempt_bis_texheader(char *target) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo)) {
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_target, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
@@ -548,7 +571,7 @@ int get_skeleton(char *skeleton_cfg, char *rtm, char *skeleton) {
 
 int attempt_bis_binarize_rtm(char *source, char *target) {
     /*
-     * Attempts to find and use the BI binarize.exe for binarization. If the
+     * Attempts to use the BI binarize.exe for binarization. If the
      * exe is not found, a negative integer is returned. 0 is returned on
      * success and a positive integer on failure.
      */
@@ -698,7 +721,7 @@ int binarize(char *source, char *target, bool force_p3d) {
      * If the file type is not recognized, -1 is returned. 0 is returned on
      * success and a positive integer on error.
      *
-     * Force Option is only for when using BIS Tools to force to binarize a p3d (individually)
+     * Force Option is only for when using BIS Tools to force to binarize a file (individually)
      */
 
     char fileext[64];

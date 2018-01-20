@@ -41,6 +41,26 @@
 #include "unistdwrapper.h"
 
 
+int is_mlod(char *source) {
+    /*
+    * Checks if source is a MLOD
+    * Returns 0 on success and a non-zero integer on failure.
+    */
+    char buffer[256];
+
+    FILE *f_source = fopen(source, "rb");
+    if (!f_source) {
+        fclose(f_source);
+        return 1;
+    }
+    fseek(f_source, 0, SEEK_SET);
+    fread(buffer, 4, 1, f_source);
+    buffer[4] = 0;
+    fclose(f_source);
+    return (stricmp(buffer, "MLOD"));
+}
+
+
 int read_lods(FILE *f_source, struct mlod_lod *mlod_lods, uint32_t num_lods) {
     /*
      * Reads all LODs (starting at the current position of f_source) into

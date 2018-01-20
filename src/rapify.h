@@ -19,6 +19,7 @@
 #pragma once
 
 
+#include "build.h"
 #include "preprocess.h"
 
 
@@ -73,10 +74,6 @@ struct expression {
     struct expression *next;
 };
 
-struct filelist {
-    char filename[2048];
-    struct filelist *next;
-};
 
 struct class *parse_file(FILE *f, struct lineref *lineref);
 

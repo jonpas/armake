@@ -37,8 +37,10 @@
 #endif
 
 #include "binarize.h"
+#include "build.h"
 #include "filesystem.h"
 #include "docopt.h"
+#include "p3d.h"
 #include "preprocess.h"
 #include "utils.h"
 #include "unistdwrapper.h"
@@ -248,6 +250,22 @@ int create_temp_folder(char *addon, char *temp_folder, size_t bufsize) {
         return -1;
 
     return create_folders(temp_folder);
+}
+
+int rename_file(char *oldname, char *newname) {
+    /*
+     * Rename a file. Returns 0 on success and non zero on failure.
+     */
+
+    #ifdef _WIN32
+        wchar_t wc_oldname[2048];
+        mbstowcs(wc_oldname, oldname, 2048);
+        wchar_t wc_newname[2048];
+        mbstowcs(wc_newname, newname, 2048);
+        return (_wrename(wc_oldname, wc_newname));
+    #else
+        return (rename(oldname,newname));
+    #endif
 }
 
 
@@ -586,12 +604,11 @@ int copy_directory(char *source, char *target) {
 
 int copy_includes(char *source, char *target) {
     /*
-     * Copy the entire directory given with source to the target folder.
+     * Copy the all include files (via file extension) recursively in source to the target folder.
      * Returns 0 on success and a non-zero integer on failure.
      */
 
     // Remove trailing path seperators
-
     if (source[strlen(source) - 1] == PATHSEP)
         source[strlen(source) - 1] = 0;
     if (target[strlen(target) - 1] == PATHSEP)
@@ -604,15 +621,26 @@ int copy_includes(char *source, char *target) {
 int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder) {
     char *ext = strrchr(source, '.');
     if ((ext != NULL) && (!stricmp(ext, ".p3d"))) {
-        int success = get_p3d_dependencies(source, tempfolder, true);
-        if (success > 0)
-            return success;
-        progressf();
+        if (is_mlod(source) == 0) {
+            progressf();
+            int success = get_p3d_dependencies(source, tempfolder, true);
+            if (success > 0)
+                return success;
+        } else {
+            progressf();
+            build_add_ignore(source);
+            return 0;
+        }
     }
     return 0;
 }
 
 
 int copy_bulk_p3ds_dependencies(char *source, char *tempfolder) {
+    /*
+    * Recursively scans p3ds, checks if MLOD/OLOD.
+    * Renames OLODs to filename.p3d.ignore (to prevent binarize crash)
+    * Gets file dependencies for MLOD p3ds
+    */
     return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder);
 }

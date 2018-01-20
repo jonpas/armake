@@ -56,6 +56,56 @@ int binarize_callback(char *root, char *source, char *junk) {
 }
 
 
+void build_add_ignore(char *filename) {
+    /*
+    * Renames a file by appending .ignore to the filename
+    * New Filename is stored in memory in a struct
+    *   This is to prevent binarize crashing on parsing OLODs
+    */
+    char newfilename[2048];
+    strcpy(newfilename, filename);
+    strcat(newfilename, ".ignore");
+    rename_file(filename, newfilename);
+
+    struct filelist *ptr = build_ignore_fileslist;
+    if (build_ignore_fileslist == NULL) {
+        ptr = malloc(sizeof(struct filelist));
+        ptr->next = NULL;
+        build_ignore_fileslist = ptr;
+    } else {
+        while ((ptr->next) != NULL) {
+            ptr = ptr->next;
+        }
+        ptr->next = malloc(sizeof(struct filelist));
+        ptr->next->next = NULL;
+        ptr = ptr->next;
+    }
+    strcpy(ptr->filename, newfilename);
+}
+
+
+void build_revert_ignores() {
+    /*
+    * Reverts files back to original name, 
+    *   that were renamed by build_add_ignore
+    *   
+    */
+    struct filelist *ptr = build_ignore_fileslist;
+    struct filelist *ptr_previous;
+    char newfilename[2048];
+    while (ptr != NULL) {
+        strncpy(newfilename, ptr->filename, sizeof(newfilename));
+        *(strrchr(newfilename, '.')) = 0;
+        rename_file((ptr->filename), newfilename);
+
+        ptr_previous = ptr;
+        ptr = ptr->next;
+        free(ptr_previous);
+    }
+    build_ignore_fileslist = NULL;
+}
+
+
 bool file_allowed(char *filename) {
     int i;
     extern char exclude_files[MAXEXCLUDEFILES][512];
@@ -426,6 +476,7 @@ int cmd_build() {
 
     // remove temp folder
     infof("Removing Temp Files\n");
+    get_temp_path(tempfolder, sizeof(tempfolder));
     if (remove_folder(tempfolder)) {
         errorf("Failed to remove temp folder.\n");
         return 10;

@@ -32,7 +32,7 @@
 #define TYPE_TRANSLATION_Y 6
 #define TYPE_TRANSLATION_Z 7
 #define TYPE_DIRECT        8
-#define TYPE_HIDE        9
+#define TYPE_HIDE          9
 
 #define SOURCE_CLAMP  0
 #define SOURCE_LOOP   1

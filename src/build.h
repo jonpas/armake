@@ -18,5 +18,15 @@
 
 #pragma once
 
+struct filelist {
+    char filename[2048];
+    struct filelist *next;
+};
+
+struct filelist *build_ignore_fileslist;
+
+void build_add_ignore(char *filename);
+
+void build_revert_ignores();
 
 int cmd_build();

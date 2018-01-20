@@ -55,6 +55,8 @@ int create_temp_folder(char *addon, char *temp_folder, size_t bufsize);
 
 void get_temp_path(char *path, size_t bufsize);
 
+int rename_file(char *oldname, char *newname);
+
 int remove_file(char *path);
 
 int remove_folder(char *folder);

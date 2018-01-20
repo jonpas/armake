@@ -81,17 +81,17 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < argc - 1; i++) {
         if (strcmp(argv[i], "-x") == 0 || strcmp(argv[i], "--exclude") == 0) {
             for (j = 0; j < MAXEXCLUDEFILES && exclude_files[j][0] != 0; j++);
-            strncpy(exclude_files[j], argv[i + 1], sizeof(exclude_files[j]));
+                strncpy(exclude_files[j], argv[i + 1], sizeof(exclude_files[j]));
         }
         if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--include") == 0) {
             for (j = 0; j < MAXINCLUDEFOLDERS && include_folders[j][0] != 0; j++);
-            strncpy(include_folders[j], argv[i + 1], sizeof(include_folders[j]));
+                strncpy(include_folders[j], argv[i + 1], sizeof(include_folders[j]));
             if (include_folders[j][strlen(include_folders[j]) - 1] == PATHSEP)
-            include_folders[j][strlen(include_folders[j]) - 1] = 0;
+                include_folders[j][strlen(include_folders[j]) - 1] = 0;
         }
         if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--warning") == 0) {
             for (j = 0; j < MAXWARNINGS && muted_warnings[j][0] != 0; j++);
-            strncpy(muted_warnings[j], argv[i + 1], sizeof(muted_warnings[j]));
+                strncpy(muted_warnings[j], argv[i + 1], sizeof(muted_warnings[j]));
         }
         if (strcmp(argv[i], "-k") == 0 || strcmp(argv[i], "--key") == 0)
             args.privatekey = argv[i + 1];

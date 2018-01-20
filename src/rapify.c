@@ -342,10 +342,9 @@ void parse_class_dependencies(struct class *result, struct filelist **files)
 
 int parse_file_get_dependencies(char *source, struct filelist **files) {
     /*
-    * Resolves macros/includes and rapifies the given file. If source and
-    * target are identical, the target is overwritten.
+    * Resolves macros/includes and of a given file.
     *
-    * Returns 0 on success and a positive integer on failure.
+    * 2nd Argument **files is for struct of files referenced i.e texture/surfaceInfo
     */
 
     FILE *f_temp;
@@ -369,6 +368,7 @@ int parse_file_get_dependencies(char *source, struct filelist **files) {
 
     fread(buffer, 4, 1, f_temp);
     if (strncmp(buffer, "\0raP", 4) == 0) {
+        fclose(f_temp);
         return 0;
     }
     else {
