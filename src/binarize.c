@@ -617,24 +617,54 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
     wchar_t wc_build[2048];
     mbstowcs(wc_build, tempfolder, 2048);
 
-    wchar_t wc_source[2048];
     wchar_t wc_rtm_temp[2048];
-    mbstowcs(wc_source, source, 2048);
-    GetFullPathName(wc_source, 2048, wc_rtm_temp, NULL);
-    wcstombs(temp, wc_rtm_temp, 2048);
+    wchar_t wc_rtm_temp_full[2048];
+    mbstowcs(wc_rtm_temp, target, 2048);
+    GetFullPathName(wc_rtm_temp, 2048, wc_rtm_temp_full, NULL);
+    wcstombs(temp, wc_rtm_temp_full, 2048);
     if (copy_file(temp, filename)) {
         errorf("Failed to copy %s to temp folder.\n", temp);
         return 2;
     }
-    remove_file(temp);  // Need to delete rtm, binarize won't overright rtm
+    remove_file(temp);  // Delete target rtm if it exists, binarize won't overright rtm
 
-    // Try to find the required files and copy them there too
+
+                        // Try to find the required files and copy them there too
+                        // Copy <config>.cpp
+
+    // Copy <model>.cfg
     strcpy(temp, source);
     strcpy(strrchr(temp, '\\') + 1, "model.cfg");
     strcpy(filename, tempfolder);
     strcat(filename, "model.cfg");
-    copy_file(temp, filename); // todo: copy model.cfg / folder.cfg / name.cfg
+    copy_file(temp, filename);
 
+    // Copy <model_name>.cfg
+    strcpy(temp, source);
+    strcpy(strrchr(temp, '.') + 1, "cfg");
+    strcpy(filename, tempfolder);
+    strcpy(strrchr(filename, '\\') + 1, strrchr(temp, '\\') + 1);
+    copy_file(temp, filename);
+
+    // Copy <directory_name>.cfg -> <temp_directory_name>.cfg
+    char directoryname[2048];
+    strcpy(temp, source);
+    *strrchr(temp, '\\') = 0;
+    strcpy(directoryname, strrchr(temp, '\\') + 1);
+    strcat(directoryname, ".cfg");
+    strcpy(temp, source);
+    strcpy(strrchr(temp, '\\') + 1, directoryname);
+
+    char tempdirectoryname[2048];
+    strcpy(filename, tempfolder);
+    *strrchr(filename, '\\') = 0;
+    strcpy(tempdirectoryname, strrchr(filename, '\\') + 1);
+    strcat(tempdirectoryname, ".cfg");
+    strcpy(filename, tempfolder);
+    strcpy(strrchr(filename, '\\') + 1, tempdirectoryname);
+    copy_file(temp, filename);
+
+    // Copy rtms.armake
     strcpy(temp, source);
     strcpy(strrchr(temp, '\\') + 1, "rtms.armake");
     strcpy(filename, tempfolder);
@@ -654,7 +684,7 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
     *(wcsrchr(wc_target, '\\')) = 0;
 
     wchar_t wc_command[2048];
-    swprintf(wc_command, 2048, L"\"%ls\" -always -maxProcesses=4 -skeleton=%ls %ls %ls",
+    swprintf(wc_command, 2048, L"\"%ls\" -always -maxProcesses=0 -skeleton=%ls %ls %ls",
         wc_binarize, wc_skeleton, wc_build, wc_target);
 
     if (getenv("BIOUTPUT")) {
@@ -670,7 +700,7 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, L"P:\\", &info, &processInfo)) {
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temp, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
@@ -734,15 +764,19 @@ int binarize(char *source, char *target, bool force_p3d) {
 
     strncpy(fileext, strrchr(source, '.'), 64);
 
-    if (!strcmp(fileext, ".cpp") ||
-            !strcmp(fileext, ".rvmat") ||
-            !strcmp(fileext, ".ext"))
+    if (!stricmp(fileext, ".cpp") ||
+            !stricmp(fileext, ".rvmat") ||
+            !stricmp(fileext, ".ext"))
         return rapify_file(source, target);
 
-    if (!strcmp(fileext, ".p3d")) {
+    if (!stricmp(fileext, ".rtm")) {
+        return attempt_bis_binarize_rtm(source, target);
+    }
+
+    if (!stricmp(fileext, ".p3d")) {
 #ifdef _WIN32
         if (!force_p3d) {
-            // Skip Binarize P3D, do them in Builk with BIS Tools
+            // Skip Binarize P3D, do them in bulk with BIS Tools
             if (found_bis_binarize >= 0)
                 return 0;
         } else {
