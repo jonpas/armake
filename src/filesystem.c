@@ -646,6 +646,25 @@ int copy_includes(char *source, char *target) {
     return traverse_directory(source, copy_includes_callback, target);
 }
 
+int copy_core(char *tempfolder) {
+    /*
+    * Copy all of core/ (under 1/2mb) fonts etc are used/loaded by binarize
+    * Returns 0 on success or if corepath isn't set in arguments
+    */
+
+    if (strlens(args.corepath) > 0) {
+        char target[2048];
+        strcpy(target, tempfolder);
+        if (target[strlen(target) - 1] != PATHSEP)
+            strcat(target, PATHSEP_STR);
+        strcat(target, "core");
+        return copy_directory(args.corepath, target);
+    } else {
+        warningf("No Arma Core Path set");
+    }
+    return 0;
+}
+
 
 int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder_root) {
     char *ext = strrchr(source, '.');

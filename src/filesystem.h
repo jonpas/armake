@@ -68,4 +68,7 @@ int traverse_directory(char *root, int (*callback)(char *, char *, char *),
     char *third_arg);
 
 int copy_directory(char *source, char *target);
+
 int copy_includes(char *source, char *target);
+
+int copy_core(char *tempfolder);

@@ -353,6 +353,7 @@ int cmd_build() {
     if (found_bis_binarize) {
         char tempfolder_root[2048];
         get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+        copy_core(tempfolder_root);
         for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
             copy_includes(include_folders[i], tempfolder_root);
         }

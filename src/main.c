@@ -97,6 +97,10 @@ int main(int argc, char *argv[]) {
             args.privatekey = argv[i + 1];
         if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--type") == 0)
             args.paatype = argv[i + 1];
+        if (strcmp(argv[i], "-C") == 0 || strcmp(argv[i], "--corepath") == 0)
+            args.corepath = argv[i + 1];
+        if (strcmp(argv[i], "-T") == 0 || strcmp(argv[i], "--temppath") == 0)
+            args.temppath = argv[i + 1];
     }
 
 

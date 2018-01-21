@@ -37,8 +37,13 @@ const char help_message[] =
 "armake\n"
 "\n"
 "Usage:\n"
+#ifdef _WIN32
+"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-C <corefolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-C <corefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+#else
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+#endif
 "    armake inspect <target>\n"
 "    armake unpack [-f] [-i <includepattern>] [-x <excludepattern>] <source> <target>\n"
 "    armake cat <target> <name>\n"
@@ -75,7 +80,8 @@ const char help_message[] =
 "    -z --compress   Compress final PAA where possible.\n"
 "    -t --type       PAA type. One of: DXT1, DXT3, DXT5, ARGB4444, ARGB1555, AI88\n"
 "                        Currently only DXT1 and DXT5 are implemented.\n"
-"    -T --temppath   Temp Directory Location.\n"
+"    -C --corepath   Arma Core Directory Location.\n"
+"    -T --temppath   Armake Temp Directory Location.\n"
 "    -h --help       Show usage information and exit.\n"
 "    -v --version    Print the version number and exit.\n"
 "\n"
@@ -97,8 +103,13 @@ const char help_message[] =
 
 const char usage_pattern[] =
 "Usage:\n"
+#ifdef _WIN32
+"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-C <corefolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-C <corefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+#else
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+#endif
 "    armake inspect <target>\n"
 "    armake unpack [-f] [-i <includepattern>] [-x <excludepattern>] <source> <target>\n"
 "    armake cat <target> <name>\n"
@@ -313,10 +324,12 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->key = option->value;
         } else if (!strcmp(option->olong, "--packonly")) {
             args->packonly = option->value;
+        } else if (!strcmp(option->olong, "--corepath")) {
+            args->core = option->value;
+        }  else if (!strcmp(option->olong, "--temppath")) {
+            args->temp = option->value;
         } else if (!strcmp(option->olong, "--type")) {
             args->type = option->value;
-        } else if (!strcmp(option->olong, "--temppath")) {
-            args->temppath = option->value;
         } else if (!strcmp(option->olong, "--version")) {
             args->version = option->value;
         } else if (!strcmp(option->olong, "--warning")) {
@@ -385,8 +398,9 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
 
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     DocoptArgs args = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         usage_pattern, help_message
     };
     Tokens ts;
@@ -413,7 +427,9 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"<source>", NULL, NULL},
         {"<target>", NULL, NULL},
         {"<wname>", NULL, NULL},
-        {"<xlist>", NULL, NULL}
+        {"<xlist>", NULL, NULL},
+        {"<corepath>", NULL, NULL },
+        {"<temppath>", NULL, NULL }
     };
     Option options[] = {
         {"-z", "--compress", 0, 0, NULL},
@@ -425,11 +441,12 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-k", "--key", 0, 0, NULL},
         {"-p", "--packonly", 0, 0, NULL},
         {"-t", "--type", 0, 0, NULL},
-        {"-T", "--temppath", 0, 0, NULL },
+        {"-C", "--corepath", 0, 0, NULL},
+        {"-T", "--temppath", 0, 0, NULL},
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };
-    Elements elements = {10, 11, 11, commands, arguments, options};
+    Elements elements = {10, 13, 13, commands, arguments, options};
 
     ts = tokens_new(argc, argv);
     if (parse_args(&ts, &elements))
