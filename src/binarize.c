@@ -261,7 +261,7 @@ int attempt_bis_binarize(char *source, char *target) {
     PROCESS_INFORMATION processInfo;
     long success;
 
-    size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
+    size_t wc_command_len = 2048 + wcslens(wc_addonbinpaths);
     wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
     wchar_t wc_temp[2048];
     char tempfolder[2048];
@@ -323,12 +323,19 @@ int attempt_bis_binarize(char *source, char *target) {
     GetFullPathName(wc_target, 2048, wc_temp, NULL);
     *(wcsrchr(wc_temp, PATHSEP)) = 0;
 
-    if (wcslens(wc_addonpaths) <= 0)
+    if (wcslens(wc_addonbinpaths) <= 0)
         swprintf(wc_command, wc_command_len, L"\"%ls\" -norecurse -always -maxProcesses=0 %ls %ls",
             wc_binarize, wc_tempfolder, wc_temp);
     else
         swprintf(wc_command, wc_command_len, L"\"%ls\" -norecurse -always -maxProcesses=0 %ls %ls %ls",
-            wc_binarize, wc_addonpaths, wc_tempfolder, wc_temp);
+            wc_binarize, wc_addonbinpaths, wc_tempfolder, wc_temp);
+
+    if (strlens(args.binpath) > 0) {
+        wchar_t wc_binpath[2048];
+        mbstowcs(wc_binpath, args.binpath, 2048);
+        wcscat(wc_command, L" -binpath=");
+        wcscat(wc_command, wc_binpath);
+    }
 
     if (getenv("BIOUTPUT")) {
         char *command = malloc(sizeof(char) * (wc_command_len + 1));
@@ -382,7 +389,7 @@ int attempt_bis_bulk_binarize(char *source) {
     STARTUPINFO info = { sizeof(info) };
     PROCESS_INFORMATION processInfo;
 
-    size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
+    size_t wc_command_len = 2048 + wcslens(wc_addonbinpaths);
     wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
     wchar_t wc_build[2048];
 
@@ -397,12 +404,13 @@ int attempt_bis_bulk_binarize(char *source) {
     infof("Checking for P3D(s) for dependencies...\n");
     copy_bulk_p3ds_dependencies(source);
 
-    if (wcslens(wc_addonpaths) <= 0) {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls",
-            wc_binarize, wc_temppath, wc_build, wc_build);
+
+    if ((wcslens(wc_addonbinpaths) <= 0) && (strlens(args.binpath) <= 0)) {
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls",
+            wc_binarize, wc_build, wc_build);
     } else {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -addon=%ls -textures=%ls %ls %ls",
-            wc_binarize, wc_addonpaths, wc_temppath, wc_build, wc_build);
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls %ls",
+            wc_binarize, wc_addonbinpaths, wc_build, wc_build);
     }
 
 
@@ -699,10 +707,6 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
     return success;
 }
 
-
-int attempt_bis_binarize_wrp(char *source, char*target) {
-    return -3;
-}
 #endif
 
 

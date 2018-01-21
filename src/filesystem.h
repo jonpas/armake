@@ -64,7 +64,7 @@ int remove_folder(char *folder);
 
 int copy_file(char *source, char *target);
 
-int traverse_directory(char *root, int (*callback)(char *, char *, char *),
+int traverse_directory(char *root, bool avoid_other_pboprefixes, int (*callback)(char *, char *, char *),
     char *third_arg);
 
 int copy_directory(char *source, char *target);

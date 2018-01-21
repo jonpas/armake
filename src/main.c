@@ -101,17 +101,28 @@ int main(int argc, char *argv[]) {
             args.corepath = argv[i + 1];
         if (strcmp(argv[i], "-T") == 0 || strcmp(argv[i], "--temppath") == 0)
             args.temppath = argv[i + 1];
+        if (strcmp(argv[i], "-B") == 0 || strcmp(argv[i], "--binpath") == 0)
+            args.binpath = argv[i + 1];
     }
 
 
     #ifdef _WIN32
         found_bis_binarize = check_bis_binarize();
         if (found_bis_binarize) {
+            if (strlens(args.binpath) > 0) {
+                if ((strrchr(args.binpath, PATHSEP)!=NULL) && (stricmp(strrchr(args.binpath, PATHSEP), "bin") == 0))
+                    *strrchr(args.binpath, PATHSEP) = 0;
+                wchar_t wc_binpath[2048];
+                mbstowcs(wc_binpath, args.binpath, 2048);
+                wcscat(wc_addonbinpaths, L" -binpath=");
+                wcscat(wc_addonbinpaths, wc_binpath);
+            }
+
             wchar_t wc_include_folder[512];
             for (i = 1; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) { //Skip Current Directory
                 mbstowcs(wc_include_folder, include_folders[i], 512);
-                wcscat(wc_addonpaths, L" -addon=");
-                wcscat(wc_addonpaths, wc_include_folder);
+                wcscat(wc_addonbinpaths, L" -addon=");
+                wcscat(wc_addonbinpaths, wc_include_folder);
             }
         };
     #endif

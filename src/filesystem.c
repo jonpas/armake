@@ -445,7 +445,7 @@ int alphasort_ci(const struct dirent **a, const struct dirent **b) {
 #endif
 
 
-int traverse_directory_recursive(char *root, char *cwd, int (*callback)(char *, char *, char *), char *third_arg) {
+int traverse_directory_recursive(char *root, char *cwd, bool *avoid_other_pboprefixes, int (*callback)(char *, char *, char *), char *third_arg) {
     /*
      * Recursive helper function for directory traversal.
      */
@@ -456,6 +456,7 @@ int traverse_directory_recursive(char *root, char *cwd, int (*callback)(char *, 
     HANDLE handle = NULL;
     char mask[2048];
     wchar_t wc_mask[2048];
+    char mask_pboprefix[2048];
     int success;
 
     if (cwd[strlen(cwd) - 1] == '\\')
@@ -478,7 +479,14 @@ int traverse_directory_recursive(char *root, char *cwd, int (*callback)(char *, 
         swprintf(wc_mask, 2048, L"%s\\%s", wc_cwd, file.cFileName);
         wcstombs(mask, wc_mask, 2048);
         if (file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            traverse_directory_recursive(root, mask, callback, third_arg);
+            if (*avoid_other_pboprefixes) {
+                strcpy(mask_pboprefix, mask);
+                strcat(mask_pboprefix, "$PBOPREFIX$");
+                if (!file_exists(mask_pboprefix))
+                    traverse_directory_recursive(root, mask, avoid_other_pboprefixes, callback, third_arg);
+            } else {
+              traverse_directory_recursive(root, mask, avoid_other_pboprefixes, callback, third_arg);
+            }
         } else {
             success = callback(root, mask, third_arg);
             if (success)
@@ -535,7 +543,7 @@ cleanup:
 }
 
 
-int traverse_directory(char *root, int (*callback)(char *, char *, char *), char *third_arg) {
+int traverse_directory(char *root, bool avoid_other_pboprefixes, int (*callback)(char *, char *, char *), char *third_arg) {
     /*
      * Traverse the given path and call the callback with the root folder as
      * the first, the current file path as the second, and the given third
@@ -548,7 +556,7 @@ int traverse_directory(char *root, int (*callback)(char *, char *, char *), char
      * error and the last callback return value should the callback fail.
      */
 
-    return traverse_directory_recursive(root, root, callback, third_arg);
+    return traverse_directory_recursive(root, root, &avoid_other_pboprefixes, callback, third_arg);
 }
 
 
@@ -626,7 +634,7 @@ int copy_directory(char *source, char *target) {
     if (target[strlen(target) - 1] == PATHSEP)
         target[strlen(target) - 1] = 0;
 
-    return traverse_directory(source, copy_callback, target);
+    return traverse_directory(source, false, copy_callback, target);
 }
 
 
@@ -643,7 +651,7 @@ int copy_includes(char *source, char *target) {
     if (target[strlen(target) - 1] == PATHSEP)
         target[strlen(target) - 1] = 0;
 
-    return traverse_directory(source, copy_includes_callback, target);
+    return traverse_directory(source, false, copy_includes_callback, target);
 }
 
 int copy_core(char *tempfolder) {
@@ -693,5 +701,5 @@ int copy_bulk_p3ds_dependencies(char *source) {
 
     char tempfolder_root[2048];
     get_temp_path(tempfolder_root, sizeof(tempfolder_root));
-    return traverse_directory(source, copy_bulk_p3ds_dependencies_callback, tempfolder_root);
+    return traverse_directory(source, false, copy_bulk_p3ds_dependencies_callback, tempfolder_root);
 }
