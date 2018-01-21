@@ -644,7 +644,7 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
     // Temp Directory
     wchar_t wc_target[2048];
     wchar_t wc_temp[2048];
-    mbstowcs(wc_temp, target, 2048);
+    mbstowcs(wc_temp, source, 2048);
     GetFullPathName(wc_temp, 2048, wc_target, NULL);
     *(wcsrchr(wc_target, '\\')) = 0;
 
@@ -665,7 +665,7 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temp, &info, &processInfo)) {
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_build, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
@@ -686,7 +686,6 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
         char skeleton[2048];
         wcstombs(skeleton, wc_skeleton, 2048);
         nwarningf("binarize-rtm-skeleton", "Failed to binarize %s using skeleton %s\n", temp, skeleton);
-        return -1;
     }
 
     if (getenv("BIOUTPUT"))
