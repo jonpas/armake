@@ -39,6 +39,7 @@
 #include "binarize.h"
 #include "utils.h"
 #include "unistdwrapper.h"
+#include "wrp.h"
 
 
 bool warned_bi_not_found = false;
@@ -90,14 +91,14 @@ int get_rvmat_dependencies(char *filename, char *tempfolder) {
             strcpy(temp_filename, tempfolder);
             strcat(temp_filename, PATHSEP_STR);
             strcat(temp_filename, files->filename);
-            if (!file_exists_fuzzy(temp_filename)) { 
+            if (!file_exists_fuzzy(temp_filename)) {
                 if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
-                    warningf("Failed to find 11 file %s\n", filename);
+                    warningf("Failed to find file %s\n", filename);
                 }
                 else {
                     strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
                     if (copy_file(texture_path_corrected, temp_filename)) {
-                        errorf("Failed to copy 11 %s to temp folder %s.\n", texture_path_corrected, temp_filename);
+                        errorf("Failed to copy %s to temp folder %s.\n", texture_path_corrected, temp_filename);
                         return 3;
                     }
                 }
@@ -205,13 +206,13 @@ int get_p3d_dependencies(char *source, char *tempfolder_root, bool bulk_binarize
 
         strcpy(filename, tempfolder_root);
         strcat(filename, PATHSEP_STR);
-        
+
         if (dependencies[i][0] != '\\') {
             strcat(filename, dependencies[i]);
         } else {
             strcat(filename, dependencies[i] + 1);
         }
-        
+
         if (!file_exists_fuzzy(filename)) {
             *filename = 0;
             *temp = 0;
@@ -438,7 +439,7 @@ int attempt_bis_bulk_binarize(char *source) {
         free(wc_command);
         return 3;
     }
-    
+
     infof("Restoring PreBinarized P3Ds...\n");
     build_revert_ignores();
 
@@ -720,9 +721,12 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     PROCESS_INFORMATION processInfo;
     long success = 0;
 
+    size_t wc_command_len = 2048 + wcslens(wc_addonbinpaths);
+    wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
+
     char temp[2048];
     char tempfolder[2048];
-    char rtmname[2048];
+    char wrpname[2048];
     char filename[2048];
 
     current_operation = OP_RTM;
@@ -738,11 +742,24 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
         target[i] = (target[i] == '/') ? '\\' : target[i];
 
 
+    // Get Temp Root Directory
+    char temppath[2048];
+    wchar_t wc_temppath[2048];
+    get_temp_path(temppath, 2048);
+    strcat(temppath, PATHSEP_STR);
+    mbstowcs(wc_temppath, temppath, 2048);
+
     // Create a temporary folder to isolate the target file and copy it there
     if (strchr(source, '\\') != NULL)
         strcpy(filename, strrchr(source, '\\') + 1);
     else
         strcpy(filename, source);
+
+
+    infof("Scanning %s\n", target);
+    wrp_parse(target);
+    wrp_get_filelist(&wrp_p3d_fileslist, temppath);
+    wrp_get_filelist(&wrp_rvmat_fileslist, temppath);
 
     infof("Binarizing %s\n", filename);
     if (create_temp_folder(filename, tempfolder, 2048)) {
@@ -750,18 +767,18 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
         return 1;
     }
 
-    strcpy(rtmname, (strchr(target, PATHSEP) == NULL) ? target : strrchr(target, PATHSEP) + 1);
+    strcpy(wrpname, (strchr(target, PATHSEP) == NULL) ? target : strrchr(target, PATHSEP) + 1);
     strcpy(filename, tempfolder);
-    strcat(filename, rtmname);
+    strcat(filename, wrpname);
 
     wchar_t wc_build[2048];
     mbstowcs(wc_build, tempfolder, 2048);
 
-    wchar_t wc_rtm_temp[2048];
-    wchar_t wc_rtm_temp_full[2048];
-    mbstowcs(wc_rtm_temp, target, 2048);
-    GetFullPathName(wc_rtm_temp, 2048, wc_rtm_temp_full, NULL);
-    wcstombs(temp, wc_rtm_temp_full, 2048);
+    wchar_t wc_wrp_temp[2048];
+    wchar_t wc_wrp_temp_full[2048];
+    mbstowcs(wc_wrp_temp, target, 2048);
+    GetFullPathName(wc_wrp_temp, 2048, wc_wrp_temp_full, NULL);
+    wcstombs(temp, wc_wrp_temp_full, 2048);
     if (copy_file(temp, filename)) {
         errorf("Failed to copy %s to temp folder.\n", temp);
         return 2;
@@ -776,36 +793,43 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     GetFullPathName(wc_temp, 2048, wc_target, NULL);
     *(wcsrchr(wc_target, '\\')) = 0;
 
-    wchar_t wc_command[2048];
-    swprintf(wc_command, 2048, L"\"%ls\" -always -maxProcesses=0 %ls %ls",
-        wc_binarize, wc_build, wc_target);
 
-    if (getenv("BIOUTPUT")) {
-        char command[2048];
-        wcstombs(command, wc_command, 2048);
-        debugf("cmdline: %s\n", command);
+    if ((wcslens(wc_addonbinpaths) <= 0) && (strlens(args.binpath) <= 0)) {
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls",
+            wc_binarize, wc_build, wc_target);
+    }
+    else {
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls %ls",
+            wc_binarize, wc_addonbinpaths, wc_build, wc_target);
     }
 
-    if (!getenv("BIOUTPUT")) {
+
+    if (getenv("BIOUTPUT")) {
+        char *command = malloc(sizeof(char) * (wc_command_len + 1));
+        wcstombs(command, wc_command, wc_command_len);
+        debugf("cmdline: %s\n", command);
+        free(command);
+    }
+
+    if (getenv("BIOUTPUT")) {
         secattr.lpSecurityDescriptor = NULL;
         secattr.bInheritHandle = TRUE;
         info.hStdOutput = info.hStdError = CreateFile(L"NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
         info.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_build, &info, &processInfo)) {
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
-    }
-    else {
+    } else {
         errorf("Failed to binarize %s.\n", source);
         return 3;
     }
 
     FILE *f_source;
     char buffer[8];
-    wcstombs(temp, wc_rtm_temp, 2048);
+    wcstombs(temp, wc_wrp_temp, 2048);
     f_source = fopen(temp, "r");
     fseek(f_source, 0, SEEK_SET);
     fread(buffer, 4, 1, f_source);

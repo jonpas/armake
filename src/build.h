@@ -24,7 +24,6 @@ struct filelist {
 };
 
 struct filelist *build_ignore_fileslist;
-struct filelist *build_wrp_fileslist;
 
 #ifdef _WIN32
 void build_add_ignore(char *filename);

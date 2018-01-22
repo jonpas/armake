@@ -71,7 +71,7 @@ void build_add_ignore(char *filename) {
     rename_file(filename, newfilename);
 
     struct filelist *ptr = build_ignore_fileslist;
-    if (build_ignore_fileslist == NULL) {
+    if (ptr == NULL) {
         ptr = malloc(sizeof(struct filelist));
         ptr->next = NULL;
         build_ignore_fileslist = ptr;
@@ -89,9 +89,9 @@ void build_add_ignore(char *filename) {
 
 void build_revert_ignores() {
     /*
-    * Reverts files back to original name, 
+    * Reverts files back to original name,
     *   that were renamed by build_add_ignore
-    *   
+    *
     */
     struct filelist *ptr = build_ignore_fileslist;
     struct filelist *ptr_previous;
