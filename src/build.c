@@ -540,7 +540,7 @@ int cmd_build() {
             strcat(target, PATHSEP_STR);
         for (i = 0; i < MAXINCLUDEFOLDERS && includeforce_folders[i][0] != 0; i++) {
             if (copy_directory_keep_prefix_path(includeforce_folders[i]))
-                errorf("Failed to copy %s to temp folder.\n", includeforce_folders[i][0]);
+                errorf("Failed to copy %s to temp folder.\n", includeforce_folders[i]);
         }
     }
 

@@ -703,7 +703,7 @@ int get_prefixpath_directory(char *source, char* addonprefix, size_t addonprefix
     addonprefix[0] = 0;
     strcat(addonprefix, tmp);
 #endif
-    return 0;
+    return success;
 }
 
 
@@ -713,8 +713,11 @@ int copy_directory_keep_prefix_path(char *source) {
     * Returns 0 on success and a non-zero integer on failure.
     */
     char addonprefix[512];
-    get_prefixpath_directory(source, addonprefix, sizeof(addonprefix));
-
+    *addonprefix = 0;
+    int success = get_prefixpath_directory(source, addonprefix, sizeof(addonprefix));
+    if (success) {
+        nwarningf("build-missing-pboprefix","Failed to get prefix for %s using %s.\n", source, addonprefix);
+    }
     char tempfolder[1024];
     if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
         errorf("Failed to create temp folder.\n");
