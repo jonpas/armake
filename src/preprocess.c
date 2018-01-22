@@ -446,11 +446,14 @@ void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t 
     int i;
     char cwd[2048];
     char *ptr;
+    FILE *f_prefix;
+    
     strncpy(cwd, path, 2048);
     ptr = cwd + strlen(cwd);
 
     while (strcmp(includefolder, cwd) != 0) {
         char prefixpath[2048];
+        *prefixedpath = 0;
 
         while (*ptr != PATHSEP)
             ptr--;
@@ -460,10 +463,38 @@ void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t 
         strcat(prefixpath, PATHSEP_STR);
         strcat(prefixpath, "$PBOPREFIX$");
 
-        FILE *f_prefix = fopen(prefixpath, "rb");
-        if (!f_prefix) {
-            continue;
+        f_prefix = fopen(prefixpath, "rb");  // $PBOPREFIX$
+        if (f_prefix) {
+            char temp[1024];
+            while (fgets(temp, sizeof(temp), f_prefix)) {
+                if (strchr(temp, '=') == NULL) { // Ignore pboProject cfgWorlds setting in $PBOPREFIX$
+                    strncpy(prefixedpath, temp, prefixedpath_size);
+                    break;
+                }
+            }
+            fclose(f_prefix);
+        } else {
+            strcat(prefixpath, ".txt");
+            f_prefix = fopen(prefixpath, "rb"); // $PBOPREFIX$.txt
+            if (f_prefix) {
+                char temp[1024];
+                char key[1024];
+                while (fgets(temp, sizeof(temp), f_prefix)) {
+                    if (strchr(temp, '=') != NULL) { // Ignore PboProject cfgWorlds setting
+                        strcpy(key, temp);
+                        *(strchr(key, '=')) = 0;
+                        if ((!stricmp(key, "prefix")) && ((strchr(temp, '=') + 1) != NULL)) {
+                            strncpy(prefixedpath, (strchr(temp, '=') + 1), prefixedpath_size);
+                            break;
+                        };
+                    }
+                }
+                fclose(f_prefix);
+            }
         }
+
+        if (strlens(prefixedpath) <= 0)
+            continue;
 
         fgets(prefixedpath, prefixedpath_size, f_prefix);
         fclose(f_prefix);
@@ -481,6 +512,7 @@ void get_prefixpath(char *path, char *includefolder, char* prefixedpath, size_t 
             if (prefixedpath[i] == '/')
                 prefixedpath[i] = '\\';
         }
+        break;
     }
 }
 

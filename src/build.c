@@ -135,6 +135,8 @@ bool file_allowed(char *filename) {
         return false;
     if (stricmp(strrchr(filename, '.'), ".dep") == 0)
         return false;
+    if (stricmp(strrchr(filename, '.'), ".ignore") == 0)
+        return false;
     for (i = 0; i < MAXEXCLUDEFILES && exclude_files[i][0] != 0; i++) {
         if (matches_glob(filename, exclude_files[i]))
             return false;

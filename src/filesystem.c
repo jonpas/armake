@@ -605,6 +605,8 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
         strcpy(filename, strrchr(source, PATHSEP) + 1);
         if (!stricmp(filename, "$PBOPREFIX$"))
             status = 0;
+        else if (!stricmp(filename, "$PBOPREFIX$.txt"))
+            status = 0;
     }
     if (status == 0) {
         //$PBOPREFIX$ is used to signify new PBO start, when packing directories recursively
@@ -624,7 +626,7 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 }
 
 
-int get_prefix_path(char *source, char* addonprefix, size_t addonprefix_size) {
+int get_prefixpath_directory(char *source, char* addonprefix, size_t addonprefix_size) {
     /*
     * Checks directory for $PBOPREFIX$ or $PBOPREFIX$.txt
     * Returns 0 on if found prefix path otherwise returns -1 & normal path
@@ -654,7 +656,7 @@ int get_prefix_path(char *source, char* addonprefix, size_t addonprefix_size) {
         }
         fclose(f_prefix);
     } else {
-        strcat(prefixpath, ".txt"); 
+        strcat(prefixpath, ".txt");
         f_prefix = fopen(prefixpath, "rb"); // $PBOPREFIX$.txt
         if (f_prefix) {
             char temp[1024];
@@ -711,7 +713,7 @@ int copy_directory_keep_prefix_path(char *source) {
     * Returns 0 on success and a non-zero integer on failure.
     */
     char addonprefix[512];
-    get_prefix_path(source, addonprefix, sizeof(addonprefix));
+    get_prefixpath_directory(source, addonprefix, sizeof(addonprefix));
 
     char tempfolder[1024];
     if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
