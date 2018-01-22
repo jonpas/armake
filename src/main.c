@@ -89,6 +89,12 @@ int main(int argc, char *argv[]) {
             if (include_folders[j][strlen(include_folders[j]) - 1] == PATHSEP)
                 include_folders[j][strlen(include_folders[j]) - 1] = 0;
         }
+        if (strcmp(argv[i], "-I") == 0 || strcmp(argv[i], "--includeforce") == 0) {
+            for (j = 0; j < MAXINCLUDEFOLDERS && includeforce_folders[j][0] != 0; j++);
+            strncpy(includeforce_folders[j], argv[i + 1], sizeof(includeforce_folders[j]));
+            if (includeforce_folders[j][strlen(includeforce_folders[j]) - 1] == PATHSEP)
+                includeforce_folders[j][strlen(includeforce_folders[j]) - 1] = 0;
+        }
         if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--warning") == 0) {
             for (j = 0; j < MAXWARNINGS && muted_warnings[j][0] != 0; j++);
                 strncpy(muted_warnings[j], argv[i + 1], sizeof(muted_warnings[j]));
@@ -97,8 +103,6 @@ int main(int argc, char *argv[]) {
             args.privatekey = argv[i + 1];
         if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--type") == 0)
             args.paatype = argv[i + 1];
-        if (strcmp(argv[i], "-C") == 0 || strcmp(argv[i], "--corepath") == 0)
-            args.corepath = argv[i + 1];
         if (strcmp(argv[i], "-T") == 0 || strcmp(argv[i], "--temppath") == 0)
             args.temppath = argv[i + 1];
         if (strcmp(argv[i], "-B") == 0 || strcmp(argv[i], "--binpath") == 0)

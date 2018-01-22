@@ -29,6 +29,7 @@ int check_bis_binarize();
 
 int get_p3d_dependencies(char *source, char *tempfolder_root, bool bulk_binarize);
 
+int attempt_bis_binarize_wrp(char *source, char *target);
 int attempt_bis_texheader(char *target);
 int attempt_bis_bulk_binarize(char *source);
 #endif

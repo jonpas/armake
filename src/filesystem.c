@@ -272,6 +272,7 @@ int create_temp_folder(char *addon, char *temp_folder, size_t bufsize) {
     return create_folders(temp_folder);
 }
 
+
 int rename_file(char *oldname, char *newname) {
     /*
      * Rename a file. Returns 0 on success and non zero on failure.
@@ -443,6 +444,7 @@ int alphasort_ci(const struct dirent **a, const struct dirent **b) {
     return strcoll(a_name, b_name);
 }
 #endif
+
 
 
 int traverse_directory_recursive(char *root, char *cwd, bool *avoid_other_pboprefixes, int (*callback)(char *, char *, char *), char *third_arg) {
@@ -622,6 +624,109 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 }
 
 
+int get_prefix_path(char *source, char* addonprefix, size_t addonprefix_size) {
+    /*
+    * Checks directory for $PBOPREFIX$ or $PBOPREFIX$.txt
+    * Returns 0 on if found prefix path otherwise returns -1 & normal path
+    */
+
+    // Remove trailing path seperators
+    if (source[strlen(source) - 1] == PATHSEP)
+        source[strlen(source) - 1] = 0;
+
+    char prefixpath[1024];
+    FILE *f_prefix;
+    int success = -1;
+
+    prefixpath[0] = 0;
+    strcat(prefixpath, source);
+    strcat(prefixpath, PATHSEP_STR);
+    strcat(prefixpath, "$PBOPREFIX$");
+    f_prefix = fopen(prefixpath, "rb");  // $PBOPREFIX$
+    if (f_prefix) {
+        char temp[1024];
+        while (fgets(temp, sizeof(temp), f_prefix)) {
+            if (strchr(temp, '=') == NULL) { // Ignore PboProject cfgWorlds setting
+                strncpy(addonprefix, temp, addonprefix_size);
+                success = 0;
+                break;
+            }
+        }
+        fclose(f_prefix);
+    } else {
+        strcat(prefixpath, ".txt"); 
+        f_prefix = fopen(prefixpath, "rb"); // $PBOPREFIX$.txt
+        if (f_prefix) {
+            char temp[1024];
+            char key[1024];
+            while (fgets(temp, sizeof(temp), f_prefix)) {
+                if (strchr(temp, '=') != NULL) { // Ignore PboProject cfgWorlds setting
+                    strcpy(key, temp);
+                    *(strchr(key, '=')) = 0;
+                    if ((!stricmp(key, "prefix")) && ((strchr(temp, '=') + 1) != NULL)) {
+                        strncpy(addonprefix, (strchr(temp, '=') + 1), addonprefix_size);
+                        success = 0;
+                        break;
+                    };
+                }
+            }
+            fclose(f_prefix);
+        }
+    }
+    if (strlens(addonprefix) <= 0) {
+        if (strrchr(source, PATHSEP) == NULL)
+            strncpy(addonprefix, source, sizeof(addonprefix));
+        else
+            strncpy(addonprefix, strrchr(source, PATHSEP) + 1, sizeof(addonprefix));
+    }
+
+    if (addonprefix[strlen(addonprefix) - 1] == '\n')
+        addonprefix[strlen(addonprefix) - 1] = '\0';
+    if (addonprefix[strlen(addonprefix) - 1] == '\r')
+        addonprefix[strlen(addonprefix) - 1] = '\0';
+
+    // replace pathseps on linux
+#ifndef _WIN32
+    char tmp[512] = "";
+    char *p = NULL;
+    for (p = addonprefix; *p; p++) {
+        if (*p == '\\' && tmp[strlen(tmp) - 1] == '/')
+            continue;
+        if (*p == '\\')
+            tmp[strlen(tmp)] = '/';
+        else
+            tmp[strlen(tmp)] = *p;
+        tmp[strlen(tmp) + 1] = 0;
+    }
+    addonprefix[0] = 0;
+    strcat(addonprefix, tmp);
+#endif
+    return 0;
+}
+
+
+int copy_directory_keep_prefix_path(char *source) {
+    /*
+    * Copy the entire directory given with source to the target folder.
+    * Returns 0 on success and a non-zero integer on failure.
+    */
+    char addonprefix[512];
+    get_prefix_path(source, addonprefix, sizeof(addonprefix));
+
+    char tempfolder[1024];
+    if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
+        errorf("Failed to create temp folder.\n");
+        return 2;
+    }
+    if (copy_directory(source, tempfolder)) {
+        errorf("Failed to copy to temp folder.\n");
+        remove_folder(tempfolder);
+        return 3;
+    }
+    return 0;
+}
+
+
 int copy_directory(char *source, char *target) {
     /*
      * Copy the entire directory given with source to the target folder.
@@ -654,36 +759,22 @@ int copy_includes(char *source, char *target) {
     return traverse_directory(source, false, copy_includes_callback, target);
 }
 
-int copy_core(char *tempfolder) {
-    /*
-    * Copy all of core/ (under 1/2mb) fonts etc are used/loaded by binarize
-    * Returns 0 on success or if corepath isn't set in arguments
-    */
-
-    if (strlens(args.corepath) > 0) {
-        char target[2048];
-        strcpy(target, tempfolder);
-        if (target[strlen(target) - 1] != PATHSEP)
-            strcat(target, PATHSEP_STR);
-        strcat(target, "core");
-        return copy_directory(args.corepath, target);
-    } else {
-        warningf("No Arma Core Path set");
-    }
-    return 0;
-}
-
 
 int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder_root) {
     char *ext = strrchr(source, '.');
-    if ((ext != NULL) && (!stricmp(ext, ".p3d"))) {
-        if (is_mlod(source) == 0) {
-            progressf();
-            int success = get_p3d_dependencies(source, tempfolder_root, true);
-            if (success > 0)
-                return success;
-        } else {
-            progressf();
+    if (ext != NULL) {
+        if (!stricmp(ext, ".p3d")) {
+            if (is_mlod(source) == 0) {
+                progressf();
+                int success = get_p3d_dependencies(source, tempfolder_root, true);
+                if (success > 0)
+                    return success;
+            } else {
+                progressf();
+                build_add_ignore(source);
+                return 0;
+            }
+        } else if (!stricmp(ext, ".wrp")) {
             build_add_ignore(source);
             return 0;
         }

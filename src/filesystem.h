@@ -69,6 +69,6 @@ int traverse_directory(char *root, bool avoid_other_pboprefixes, int (*callback)
 
 int copy_directory(char *source, char *target);
 
-int copy_includes(char *source, char *target);
+int copy_directory_keep_prefix_path(char *source);
 
-int copy_core(char *tempfolder);
+int copy_includes(char *source, char *target);

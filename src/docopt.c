@@ -38,11 +38,11 @@ const char help_message[] =
 "\n"
 "Usage:\n"
 #ifdef _WIN32
-"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-C <corefolder>] <source> <target>\n"
-"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-C <corefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake binarize [-f] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #else
-"    armake binarize [-f] [-w <wname>] [-i <includefolder>] <source> <target>\n"
-"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #endif
 "    armake inspect <target>\n"
 "    armake unpack [-f] [-i <includepattern>] [-x <excludepattern>] <source> <target>\n"
@@ -68,23 +68,24 @@ const char help_message[] =
 "    img2paa     Convert image to PAA.\n"
 "\n"
 "Options:\n"
-"    -f --force      Overwrite the target file/folder if it already exists.\n"
-"    -p --packonly   Don't binarize models, configs etc.\n"
-"    -w --warning    Warning to disable (repeatable).\n"
-"    -i --include    Folder to search for includes, defaults to CWD (repeatable).\n"
-"                        For unpack: pattern to include in output folder (repeatable).\n"
-"    -x --exclude    Glob patterns to exclude from PBO (repeatable).\n"
-"                        For unpack: pattern to exclude from output folder (repeatable).\n"
-"    -k --key        Private key to use for signing the PBO.\n"
-"    -d --indent     String to use for indentation. \"    \" (4 spaces) by default.\n"
-"    -z --compress   Compress final PAA where possible.\n"
-"    -t --type       PAA type. One of: DXT1, DXT3, DXT5, ARGB4444, ARGB1555, AI88\n"
-"                        Currently only DXT1 and DXT5 are implemented.\n"
-"    -B --binpath    Arma Bin Directory Location.\n"
-"    -C --corepath   Arma Core Directory Location.\n"
-"    -T --temppath   Armake Temp Directory Location.\n"
-"    -h --help       Show usage information and exit.\n"
-"    -v --version    Print the version number and exit.\n"
+"    -f --force         Overwrite the target file/folder if it already exists.\n"
+"    -p --packonly      Don't binarize models, configs etc.\n"
+"    -w --warning       Warning to disable (repeatable).\n"
+"    -i --include       Folder to search for includes, defaults to CWD (repeatable).\n"
+"                           For unpack: pattern to include in output folder (repeatable).\n"
+"    -I --forceinclude  Folder to force copy for temp build folder, for fonts/files for binarize.\n"
+"                           Will also speed up builds to avoid searching for files.\n"
+"    -x --exclude       Glob patterns to exclude from PBO (repeatable).\n"
+"                           For unpack: pattern to exclude from output folder (repeatable).\n"
+"    -k --key           Private key to use for signing the PBO.\n"
+"    -d --indent        String to use for indentation. \"    \" (4 spaces) by default.\n"
+"    -z --compress      Compress final PAA where possible.\n"
+"    -t --type          PAA type. One of: DXT1, DXT3, DXT5, ARGB4444, ARGB1555, AI88\n"
+"                           Currently only DXT1 and DXT5 are implemented.\n"
+"    -B --binpath       Arma Bin Directory Location.\n"
+"    -T --temppath      Armake Temp Directory Location.\n"
+"    -h --help          Show usage information and exit.\n"
+"    -v --version       Print the version number and exit.\n"
 "\n"
 "Warnings:\n"
 "    By default, armake prints all warnings. You can mute trivial warnings\n"
@@ -105,11 +106,11 @@ const char help_message[] =
 const char usage_pattern[] =
 "Usage:\n"
 #ifdef _WIN32
-"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-B <binfolder>] [-C <corefolder>] [-T <tempfolder>] <source> <target>\n"
-"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-B <binfolder>] [-C <corefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake binarize [-f] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #else
-"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-T <tempfolder>] <source> <target>\n"
-"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #endif
 "    armake inspect <target>\n"
 "    armake unpack [-f] [-i <includepattern>] [-x <excludepattern>] <source> <target>\n"
@@ -319,14 +320,14 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->help = option->value;
         } else if (!strcmp(option->olong, "--include")) {
             args->include = option->value;
+        } else if (!strcmp(option->olong, "--includeforce")) {
+            args->includeforce = option->value;
         } else if (!strcmp(option->olong, "--indent")) {
             args->indent = option->value;
         } else if (!strcmp(option->olong, "--key")) {
             args->key = option->value;
         } else if (!strcmp(option->olong, "--packonly")) {
             args->packonly = option->value;
-        } else if (!strcmp(option->olong, "--corepath")) {
-            args->core = option->value;
         }  else if (!strcmp(option->olong, "--temppath")) {
             args->temp = option->value;
         } else if (!strcmp(option->olong, "--binpath")) {
@@ -371,6 +372,8 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->excludepattern = argument->value;
         } else if (!strcmp(argument->name, "<includefolder>")) {
             args->includefolder = argument->value;
+        } else if (!strcmp(argument->name, "<includeforcefolder>")) {
+            args->includeforcefolder = argument->value;
         } else if (!strcmp(argument->name, "<includepattern>")) {
             args->includepattern = argument->value;
         } else if (!strcmp(argument->name, "<indentation>")) {
@@ -402,7 +405,7 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     DocoptArgs args = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         usage_pattern, help_message
     };
@@ -422,6 +425,7 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     Argument arguments[] = {
         {"<excludepattern>", NULL, NULL},
         {"<includefolder>", NULL, NULL},
+        {"<includeforcefolder>", NULL, NULL},
         {"<includepattern>", NULL, NULL},
         {"<indentation>", NULL, NULL},
         {"<name>", NULL, NULL},
@@ -429,9 +433,9 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"<privatekey>", NULL, NULL},
         {"<source>", NULL, NULL},
         {"<target>", NULL, NULL},
+        {"<binpath>", NULL, NULL },
         {"<wname>", NULL, NULL},
         {"<xlist>", NULL, NULL},
-        {"<corepath>", NULL, NULL },
         {"<temppath>", NULL, NULL }
     };
     Option options[] = {
@@ -440,17 +444,17 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-f", "--force", 0, 0, NULL},
         {"-h", "--help", 0, 0, NULL},
         {"-i", "--include", 0, 0, NULL},
+        {"-I", "--includeforce", 0, 0, NULL},
         {"-d", "--indent", 0, 0, NULL},
         {"-k", "--key", 0, 0, NULL},
         {"-p", "--packonly", 0, 0, NULL},
         {"-t", "--type", 0, 0, NULL},
-        {"-C", "--corepath", 0, 0, NULL},
         {"-T", "--temppath", 0, 0, NULL},
         {"-B", "--binpath", 0, 0, NULL },
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };
-    Elements elements = {10, 13, 14, commands, arguments, options};
+    Elements elements = {10, 14, 14, commands, arguments, options};
 
     ts = tokens_new(argc, argv);
     if (parse_args(&ts, &elements))

@@ -56,6 +56,8 @@ int binarize_callback(char *root, char *source, char *junk) {
 }
 
 
+#ifdef _WIN32
+
 void build_add_ignore(char *filename) {
     /*
     * Renames a file by appending .ignore to the filename
@@ -65,6 +67,7 @@ void build_add_ignore(char *filename) {
     char newfilename[2048];
     strcpy(newfilename, filename);
     strcat(newfilename, ".ignore");
+    remove_file(newfilename);
     rename_file(filename, newfilename);
 
     struct filelist *ptr = build_ignore_fileslist;
@@ -93,11 +96,24 @@ void build_revert_ignores() {
     struct filelist *ptr = build_ignore_fileslist;
     struct filelist *ptr_previous;
     char newfilename[2048];
+    char *fileext;
+
     while (ptr != NULL) {
         strncpy(newfilename, ptr->filename, sizeof(newfilename));
         *(strrchr(newfilename, '.')) = 0;
         rename_file((ptr->filename), newfilename);
+        fileext = strrchr(newfilename, '.');
+        ptr = ptr->next;
+    }
 
+    // Scan List again for WRPs (want p3ds etc reverted before attempting to binarize wrp)
+    ptr = build_ignore_fileslist;
+    while (ptr != NULL) {
+        strncpy(newfilename, ptr->filename, sizeof(newfilename));
+        *(strrchr(newfilename, '.')) = 0;
+        fileext = strrchr(newfilename, '.');
+        if ((fileext != NULL) && (!stricmp(fileext, ".wrp")))
+            attempt_bis_binarize_wrp(newfilename, newfilename);
         ptr_previous = ptr;
         ptr = ptr->next;
         free(ptr_previous);
@@ -105,6 +121,7 @@ void build_revert_ignores() {
     build_ignore_fileslist = NULL;
 }
 
+#endif
 
 bool file_allowed(char *filename) {
     int i;
@@ -511,11 +528,22 @@ int cmd_build() {
         return 3;
     }
 
+    char tempfolder_root[2048];
+    char target[2048];
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+
+    if (args.includeforce > 0) {
+        strcpy(target, tempfolder);
+        if (target[strlen(target) - 1] != PATHSEP)
+            strcat(target, PATHSEP_STR);
+        for (i = 0; i < MAXINCLUDEFOLDERS && includeforce_folders[i][0] != 0; i++) {
+            if (copy_directory_keep_prefix_path(includeforce_folders[i]))
+                errorf("Failed to copy %s to temp folder.\n", includeforce_folders[i][0]);
+        }
+    }
+
 #ifdef _WIN32
     if (found_bis_binarize) {
-        char tempfolder_root[2048];
-        get_temp_path(tempfolder_root, sizeof(tempfolder_root));
-        copy_core(tempfolder_root);
         for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
             copy_includes(include_folders[i], tempfolder_root);
         }
@@ -523,6 +551,5 @@ int cmd_build() {
 #endif
 
     return build(prefixpath, sizeof(prefixpath), tempfolder, sizeof(tempfolder), addonprefix, sizeof(addonprefix));
-
     return 0;
 }

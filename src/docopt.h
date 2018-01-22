@@ -52,6 +52,7 @@ typedef struct {
     /* arguments */
     char *excludepattern;
     char *includefolder;
+    char *includeforcefolder;
     char *includepattern;
     char *indentation;
     char *name;
@@ -60,7 +61,6 @@ typedef struct {
     char *source;
     char *target;
     char *temppath;
-    char *corepath;
     char *binpath;
     char *wname;
     char *xlist;
@@ -70,6 +70,7 @@ typedef struct {
     int force;
     int help;
     int include;
+    int includeforce;
     int indent;
     int key;
     int packonly;
@@ -77,7 +78,6 @@ typedef struct {
     int version;
     int warning;
     int temp;
-    int core;
     int bin;
     /* special */
     const char *usage_pattern;
@@ -123,9 +123,9 @@ typedef struct Tokens {
 DocoptArgs args;
 char exclude_files[MAXEXCLUDEFILES][512];
 char include_folders[MAXINCLUDEFOLDERS][512];
+char includeforce_folders[MAXINCLUDEFOLDERS][512];
 #ifdef _WIN32
 wchar_t wc_addonbinpaths[(MAXINCLUDEFOLDERS*(512+8))+2048];  // -addon=  + binPath
-char corepath[2048];
 #endif
 char muted_warnings[MAXWARNINGS][512];
 

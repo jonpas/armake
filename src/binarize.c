@@ -707,6 +707,128 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
     return success;
 }
 
+
+int attempt_bis_binarize_wrp(char *source, char *target) {
+    /*
+    * Attempts to use the BI binarize.exe for binarization. If the
+    * exe is not found, a negative integer is returned. 0 is returned on
+    * success and a positive integer on failure.
+    */
+
+    SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
+    STARTUPINFO info = { sizeof(info) };
+    PROCESS_INFORMATION processInfo;
+    long success = 0;
+
+    char temp[2048];
+    char tempfolder[2048];
+    char rtmname[2048];
+    char filename[2048];
+
+    current_operation = OP_RTM;
+    strcpy(current_target, source);
+
+    //if (getenv("NATIVEBIN"))
+    //    return -1;
+
+    for (int i = 0; i < strlen(source); i++)
+        source[i] = (source[i] == '/') ? '\\' : source[i];
+
+    for (int i = 0; i < strlen(target); i++)
+        target[i] = (target[i] == '/') ? '\\' : target[i];
+
+
+    // Create a temporary folder to isolate the target file and copy it there
+    if (strchr(source, '\\') != NULL)
+        strcpy(filename, strrchr(source, '\\') + 1);
+    else
+        strcpy(filename, source);
+
+    infof("Binarizing %s\n", filename);
+    if (create_temp_folder(filename, tempfolder, 2048)) {
+        errorf("Failed to create temp folder.\n");
+        return 1;
+    }
+
+    strcpy(rtmname, (strchr(target, PATHSEP) == NULL) ? target : strrchr(target, PATHSEP) + 1);
+    strcpy(filename, tempfolder);
+    strcat(filename, rtmname);
+
+    wchar_t wc_build[2048];
+    mbstowcs(wc_build, tempfolder, 2048);
+
+    wchar_t wc_rtm_temp[2048];
+    wchar_t wc_rtm_temp_full[2048];
+    mbstowcs(wc_rtm_temp, target, 2048);
+    GetFullPathName(wc_rtm_temp, 2048, wc_rtm_temp_full, NULL);
+    wcstombs(temp, wc_rtm_temp_full, 2048);
+    if (copy_file(temp, filename)) {
+        errorf("Failed to copy %s to temp folder.\n", temp);
+        return 2;
+    }
+    remove_file(temp);  // Delete target wrp if it exists, binarize won't overright wrp
+
+
+    // Temp Directory
+    wchar_t wc_target[2048];
+    wchar_t wc_temp[2048];
+    mbstowcs(wc_temp, source, 2048);
+    GetFullPathName(wc_temp, 2048, wc_target, NULL);
+    *(wcsrchr(wc_target, '\\')) = 0;
+
+    wchar_t wc_command[2048];
+    swprintf(wc_command, 2048, L"\"%ls\" -always -maxProcesses=0 %ls %ls",
+        wc_binarize, wc_build, wc_target);
+
+    if (getenv("BIOUTPUT")) {
+        char command[2048];
+        wcstombs(command, wc_command, 2048);
+        debugf("cmdline: %s\n", command);
+    }
+
+    if (!getenv("BIOUTPUT")) {
+        secattr.lpSecurityDescriptor = NULL;
+        secattr.bInheritHandle = TRUE;
+        info.hStdOutput = info.hStdError = CreateFile(L"NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
+        info.dwFlags |= STARTF_USESTDHANDLES;
+    }
+
+    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_build, &info, &processInfo)) {
+        WaitForSingleObject(processInfo.hProcess, INFINITE);
+        CloseHandle(processInfo.hProcess);
+        CloseHandle(processInfo.hThread);
+    }
+    else {
+        errorf("Failed to binarize %s.\n", source);
+        return 3;
+    }
+
+    FILE *f_source;
+    char buffer[8];
+    wcstombs(temp, wc_rtm_temp, 2048);
+    f_source = fopen(temp, "r");
+    fseek(f_source, 0, SEEK_SET);
+    fread(buffer, 4, 1, f_source);
+    buffer[4] = 0;
+    fclose(f_source);
+    /*
+    if (stricmp(buffer, "BMTR")) {
+        char skeleton[2048];
+        wcstombs(skeleton, wc_skeleton, 2048);
+        nwarningf("binarize-rtm-skeleton", "Failed to binarize %s using skeleton %s\n", temp, skeleton);
+    }
+    */
+
+    if (getenv("BIOUTPUT"))
+        debugf("done with binarize.exe\n");
+
+    // Clean Up
+    if (remove_folder(tempfolder)) {
+        errorf("Failed to remove temp folder.\n");
+        return 4;
+    }
+    return success;
+}
 #endif
 
 
