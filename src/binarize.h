@@ -27,7 +27,7 @@ wchar_t wc_binarize[2048];
 int found_bis_binarize;
 int check_bis_binarize();
 
-int get_p3d_dependencies(char *source, char *tempfolder_root, bool bulk_binarize);
+int get_p3d_dependencies(char *source, char *tempfolder_root);
 
 int attempt_bis_binarize_wrp(char *source, char *target);
 int attempt_bis_texheader(char *target);

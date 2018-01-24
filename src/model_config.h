@@ -39,6 +39,8 @@
 #define SOURCE_MIRROR 2
 
 
+#include <stdint.h>
+
 #include "vector.h"
 
 struct bone {

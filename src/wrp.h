@@ -24,9 +24,9 @@
 
 #include "build.h"
 
-struct filelist *wrp_p3d_fileslist;
-struct filelist *wrp_rvmat_fileslist;
+struct filelist *wrp_temp_folderlist;
+
+int wrp_add_dependency(char *filename);
+int wrp_bin_dependency();
 
 int wrp_parse(char *path);
-
-void wrp_get_filelist(struct filelist **list, char *tempfolder_root);

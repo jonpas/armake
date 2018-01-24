@@ -38,14 +38,15 @@
 #define OP_BUILD 0
 #define OP_PREPROCESS 1
 #define OP_RAPIFY 2
-#define OP_P3D 3
-#define OP_RTM 4
-#define OP_WRP 5
-#define OP_MODELCONFIG 6
-#define OP_MATERIAL 7
-#define OP_UNPACK 8
-#define OP_DERAPIFY 9
-#define OP_IMAGE 10
+#define OP_BULK 3
+#define OP_P3D 4
+#define OP_RTM 5
+#define OP_WRP 6
+#define OP_MODELCONFIG 7
+#define OP_MATERIAL 8
+#define OP_UNPACK 9
+#define OP_DERAPIFY 10
+#define OP_IMAGE 11
 
 
 struct point {

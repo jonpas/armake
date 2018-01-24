@@ -61,7 +61,8 @@ bool file_exists_fuzzy(char *path) {
     unsigned long attrs = GetFileAttributes(wc_path);
 
     int status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
-    if (!status)
+    if (!status) {
+        infof("DEBUG: %s\n", path);
         if (!stricmp(strrchr(path, '.'), ".tga")) {
             char alternative_path[2048];
             strncpy(alternative_path, path, sizeof(alternative_path));
@@ -70,6 +71,7 @@ bool file_exists_fuzzy(char *path) {
             attrs = GetFileAttributes(wc_path);
             status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
         }
+    }
 
     free(wc_path);
     return status;
@@ -156,7 +158,7 @@ void get_temp_path(char *path, size_t bufsize) {
     } else {
         strcpy(path, args.temppath);
     }
-    if (((path[strlen(path) - 1]) == '\\') || ((path[strlen(path) - 1]) == '/')) {
+    if ((path[strlen(path) - 1]) == PATHSEP) {
         path[strlen(path) - 1] = 0;
     }
 }
@@ -765,22 +767,22 @@ int copy_includes(char *source, char *target) {
 }
 
 
-int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *tempfolder_root) {
+int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, struct build_ignore_data *data) {
     char *ext = strrchr(source, '.');
     if (ext != NULL) {
         if (!stricmp(ext, ".p3d")) {
             if (is_mlod(source) == 0) {
                 progressf();
-                int success = get_p3d_dependencies(source, tempfolder_root, true);
-                if (success > 0)
-                    return success;
+                int ret = get_p3d_dependencies(source, data->tempfolder_root);
+                if (ret > 0)
+                    return ret;
             } else {
                 progressf();
-                build_add_ignore(source);
+                build_add_ignore(source, data);
                 return 0;
             }
         } else if (!stricmp(ext, ".wrp")) {
-            build_add_ignore(source);
+            build_add_ignore(source, data);
             return 0;
         }
     }
@@ -788,14 +790,11 @@ int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, char *
 }
 
 
-int copy_bulk_p3ds_dependencies(char *source) {
+int copy_bulk_p3ds_dependencies(char *source, struct build_ignore_data *data) {
     /*
     * Recursively scans p3ds, checks if MLOD/OLOD.
     * Renames OLODs to filename.p3d.ignore (to prevent binarize crash)
     * Gets file dependencies for MLOD p3ds
     */
-
-    char tempfolder_root[2048];
-    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
-    return traverse_directory(source, false, copy_bulk_p3ds_dependencies_callback, tempfolder_root);
+    return traverse_directory(source, false, copy_bulk_p3ds_dependencies_callback, data);
 }

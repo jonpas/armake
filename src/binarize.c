@@ -80,16 +80,19 @@ int get_rvmat_dependencies(char *filename, char *tempfolder) {
     struct filelist *files_previous;
     struct filelist *files;
     files = NULL;
-    //infof("DEBUG: %s\n", filename);
+    infof("DEBUG: %s\n", filename);
     parse_file_get_dependencies(filename, &files);
     while (files != NULL) {
         progressf();
-        if ((strncmp(files->filename, "#", 1) != 0) && (strncmp(files->filename, "(", 1) != 0)) {
+        if ((strncmp(files->filename, "#", 1) != 0) && 
+        (strncmp(files->filename, "(", 1) != 0)  && 
+        ((strlens(files->filename) > 0))) {
             char texture_path_corrected[2048] = PATHSEP_STR;
             strcat(texture_path_corrected, files->filename);
             char temp_filename[2048];
             strcpy(temp_filename, tempfolder);
-            strcat(temp_filename, PATHSEP_STR);
+            if (temp_filename[strlen(temp_filename) - 1] != PATHSEP)
+                strcat(temp_filename, PATHSEP_STR);
             strcat(temp_filename, files->filename);
             if (!file_exists_fuzzy(temp_filename)) {
                 if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
@@ -113,7 +116,7 @@ int get_rvmat_dependencies(char *filename, char *tempfolder) {
 }
 
 
-int get_p3d_dependencies(char *source, char *tempfolder_root, bool bulk_binarize) {
+int get_p3d_dependencies(char *source, char *tempfolder_root) {
     /*
     * Copies p3d depenencies to tempfolder location
     * i.e if p3d is using textures/rvmats from a3/  need to copy this into temp folder for BI binarize
@@ -189,16 +192,6 @@ int get_p3d_dependencies(char *source, char *tempfolder_root, bool bulk_binarize
         free(mlod_lods[i].selections);
     }
     free(mlod_lods);
-
-
-    if (!bulk_binarize) {
-        sprintf(temp, "%s%s", tempfolder_root, (strrchr(source, '\\') + 1));
-        if (copy_file(source, temp)) {
-            errorf("Failed to copy p3d to temp folder.\n");
-            return 1;
-        }
-    }
-
 
     for (i = 0; i < MAXTEXTURES; i++) {
         if (dependencies[i] == 0)
@@ -311,10 +304,17 @@ int attempt_bis_binarize(char *source, char *target) {
     }
 
 
-    // Copy P3D Dependencies to temporary folder
-    success = get_p3d_dependencies(source, tempfolder, false);
+    // Copy P3D Dependencies to temp folder
+    success = get_p3d_dependencies(source, tempfolder);
     if (success > 0)
         return success;
+
+    // Copy P3D to temp folder
+    sprintf(temp, "%s%s", tempfolder, (strrchr(source, PATHSEP) + 1));
+    if (copy_file(source, temp)) {
+         errorf("Failed to copy p3d to temp folder.\n");
+         return 1;
+    }
 
     // Call binarize.exe
     mbstowcs(wc_tempfolder, tempfolder, 2048);
@@ -385,7 +385,9 @@ int attempt_bis_bulk_binarize(char *source) {
     * success and a positive integer on failure.
     */
 
-    current_operation = OP_BUILD;
+    extern int current_operation;
+    extern char current_target[2048];
+
     SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
     STARTUPINFO info = { sizeof(info) };
     PROCESS_INFORMATION processInfo;
@@ -394,16 +396,19 @@ int attempt_bis_bulk_binarize(char *source) {
     wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
     wchar_t wc_build[2048];
 
+    current_operation = OP_BULK;
+
     mbstowcs(wc_build, source, 2048);
 
     char temppath[2048];
     wchar_t wc_temppath[2048];
     get_temp_path(temppath, 2048);
-    strcat(temppath, PATHSEP_STR);
     mbstowcs(wc_temppath, temppath, 2048);
 
     infof("Checking for P3D(s) for dependencies...\n");
-    copy_bulk_p3ds_dependencies(source);
+    struct build_ignore_data ignore_data;
+    strcpy(ignore_data.tempfolder_root, temppath);
+    copy_bulk_p3ds_dependencies(source, &ignore_data);
 
 
     if ((wcslens(wc_addonbinpaths) <= 0) && (strlens(args.binpath) <= 0)) {
@@ -441,7 +446,7 @@ int attempt_bis_bulk_binarize(char *source) {
     }
 
     infof("Restoring PreBinarized P3Ds...\n");
-    build_revert_ignores();
+    build_revert_ignores(&ignore_data);
 
     if (getenv("BIOUTPUT"))
         debugf("done with binarize.exe\n");
@@ -549,6 +554,9 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
      * exe is not found, a negative integer is returned. 0 is returned on
      * success and a positive integer on failure.
      */
+
+    extern int current_operation;
+    extern char current_target[2048];
 
     SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
     STARTUPINFO info = { sizeof(info) };
@@ -716,6 +724,9 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     * success and a positive integer on failure.
     */
 
+    extern int current_operation;
+    extern char current_target[2048];
+
     SECURITY_ATTRIBUTES secattr = { sizeof(secattr) };
     STARTUPINFO info = { sizeof(info) };
     PROCESS_INFORMATION processInfo;
@@ -729,7 +740,7 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     char wrpname[2048];
     char filename[2048];
 
-    current_operation = OP_RTM;
+    current_operation = OP_WRP;
     strcpy(current_target, source);
 
     //if (getenv("NATIVEBIN"))
@@ -746,7 +757,6 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     char temppath[2048];
     wchar_t wc_temppath[2048];
     get_temp_path(temppath, 2048);
-    strcat(temppath, PATHSEP_STR);
     mbstowcs(wc_temppath, temppath, 2048);
 
     // Create a temporary folder to isolate the target file and copy it there
@@ -758,12 +768,11 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
 
     infof("Scanning %s\n", target);
     wrp_parse(target);
-    wrp_get_filelist(&wrp_p3d_fileslist, temppath);
-    wrp_get_filelist(&wrp_rvmat_fileslist, temppath);
 
     infof("Binarizing %s\n", filename);
     if (create_temp_folder(filename, tempfolder, 2048)) {
         errorf("Failed to create temp folder.\n");
+        free(wc_command);
         return 1;
     }
 
@@ -781,6 +790,7 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     wcstombs(temp, wc_wrp_temp_full, 2048);
     if (copy_file(temp, filename)) {
         errorf("Failed to copy %s to temp folder.\n", temp);
+        free(wc_command);
         return 2;
     }
     remove_file(temp);  // Delete target wrp if it exists, binarize won't overright wrp
@@ -795,12 +805,12 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
 
 
     if ((wcslens(wc_addonbinpaths) <= 0) && (strlens(args.binpath) <= 0)) {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls",
-            wc_binarize, wc_build, wc_target);
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls",
+            wc_binarize, wc_temppath, wc_build, wc_target);
     }
     else {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls %ls",
-            wc_binarize, wc_addonbinpaths, wc_build, wc_target);
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls %ls",
+            wc_binarize, wc_temppath, wc_addonbinpaths, wc_build, wc_target);
     }
 
 
@@ -824,9 +834,11 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
         CloseHandle(processInfo.hThread);
     } else {
         errorf("Failed to binarize %s.\n", source);
+        free(wc_command);
         return 3;
     }
 
+    /*
     FILE *f_source;
     char buffer[8];
     wcstombs(temp, wc_wrp_temp, 2048);
@@ -835,6 +847,7 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     fread(buffer, 4, 1, f_source);
     buffer[4] = 0;
     fclose(f_source);
+    */
     /*
     if (stricmp(buffer, "BMTR")) {
         char skeleton[2048];
@@ -849,8 +862,10 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     // Clean Up
     if (remove_folder(tempfolder)) {
         errorf("Failed to remove temp folder.\n");
+        free(wc_command);
         return 4;
     }
+    free(wc_command);
     return success;
 }
 #endif

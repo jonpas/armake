@@ -58,7 +58,7 @@ int binarize_callback(char *root, char *source, char *junk) {
 
 #ifdef _WIN32
 
-void build_add_ignore(char *filename) {
+void build_add_ignore(char *filename, struct build_ignore_data *data) {
     /*
     * Renames a file by appending .ignore to the filename
     * New Filename is stored in memory in a struct
@@ -70,11 +70,11 @@ void build_add_ignore(char *filename) {
     remove_file(newfilename);
     rename_file(filename, newfilename);
 
-    struct filelist *ptr = build_ignore_fileslist;
+    struct filelist *ptr = data->fileslist;
     if (ptr == NULL) {
         ptr = malloc(sizeof(struct filelist));
         ptr->next = NULL;
-        build_ignore_fileslist = ptr;
+        data->fileslist = ptr;
     } else {
         while ((ptr->next) != NULL) {
             ptr = ptr->next;
@@ -87,13 +87,13 @@ void build_add_ignore(char *filename) {
 }
 
 
-void build_revert_ignores() {
+void build_revert_ignores(struct build_ignore_data *data) {
     /*
     * Reverts files back to original name,
     *   that were renamed by build_add_ignore
     *
     */
-    struct filelist *ptr = build_ignore_fileslist;
+    struct filelist *ptr = data->fileslist;
     struct filelist *ptr_previous;
     char newfilename[2048];
     char *fileext;
@@ -107,7 +107,7 @@ void build_revert_ignores() {
     }
 
     // Scan List again for WRPs (want p3ds etc reverted before attempting to binarize wrp)
-    ptr = build_ignore_fileslist;
+    ptr = data->fileslist;
     while (ptr != NULL) {
         strncpy(newfilename, ptr->filename, sizeof(newfilename));
         *(strrchr(newfilename, '.')) = 0;
@@ -118,7 +118,7 @@ void build_revert_ignores() {
         ptr = ptr->next;
         free(ptr_previous);
     }
-    build_ignore_fileslist = NULL;
+    data->fileslist = NULL;
 }
 
 #endif
@@ -401,14 +401,6 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
     fwrite(checksum, 20, 1, f_target);
     fclose(f_target);
 
-    // remove temp folder
-    infof("Removing Temp Files\n");
-    get_temp_path(tempfolder, sizeof(tempfolder));
-    if (remove_folder(tempfolder)) {
-        errorf("Failed to remove temp folder.\n");
-        return 10;
-    }
-
     // sign pbo
     if (args.key) {
         infof("Signing PBO...\n");
@@ -552,6 +544,17 @@ int cmd_build() {
     }
 #endif
 
-    return build(prefixpath, sizeof(prefixpath), tempfolder, sizeof(tempfolder), addonprefix, sizeof(addonprefix));
+    int success = build(prefixpath, sizeof(prefixpath), tempfolder, sizeof(tempfolder), addonprefix, sizeof(addonprefix));
+    if (success != 0) {
+        return success;
+    }
+
+    // remove temp folder
+    infof("Removing Temp Files\n");
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+    if (remove_folder(tempfolder_root)) {
+        errorf("Failed to remove temp folder.\n");
+        return 10;
+    }
     return 0;
 }

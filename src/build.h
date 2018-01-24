@@ -23,12 +23,15 @@ struct filelist {
     struct filelist *next;
 };
 
-struct filelist *build_ignore_fileslist;
+struct build_ignore_data {
+    char tempfolder_root[2048];
+    struct filelist *fileslist;
+};
 
 #ifdef _WIN32
-void build_add_ignore(char *filename);
+void build_add_ignore(char *filename, struct build_ignore_data *data);
 
-void build_revert_ignores();
+void build_revert_ignores(struct build_ignore_data *data);
 #endif
 
 int cmd_build();

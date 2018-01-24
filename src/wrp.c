@@ -25,36 +25,85 @@
 
 #include "wrp.h"
 
+#include "binarize.h"
 #include "filesystem.h"
+#include "p3d.h"
 #include "preprocess.h"
 #include "utils.h"
 
 
-void wrp_add_filelist(struct filelist **list, char *filename) {
+int wrp_add_dependency(char *filename) {
     /*
-    * Renames a file by appending .ignore to the filename
-    * New Filename is stored in memory in a struct
-    *   This is to prevent binarize crashing on parsing OLODs
+    * Reverts files back to original name,
+    *   that were renamed by build_add_ignore
+    *
     */
+    struct filelist *ptr;
+    struct filelist *ptr_previous;
     char temp[2048];
-    temp[0] = 0;
-    if (filename[0] != '\\')
-        strcat(temp, "\\");
-    strcat(temp, filename);
-    struct filelist *ptr = *list;
+    char source[2048];
+    char dest[2048];
 
+    bool status;
+
+    // Check if file already exists
+    get_temp_path(dest, 2048);
+    strcat(dest, PATHSEP_STR);
+    strcat(dest, filename);
+
+    status = file_exists(dest);
+    *(strrchr(dest, '\\')) = 0;
+    if (status) {
+        if (!stricmp(strrchr(filename, '.'), ".p3d")) {
+            if (!is_mlod)
+                return 0;
+        } else {
+            return 0;
+        }
+    } else {
+        strcpy(temp, "\\");
+        strcat(temp, filename);
+        if (find_file(temp, "", source, true, false)) {
+            warningf("Failed to find file %s.\n", filename);
+            return 1;
+        }
+
+        *(strrchr(source, '\\')) = 0;
+        copy_directory(source, dest); // Only copy files if missing, still need to binarize p3ds for wrp
+    }
+
+
+
+
+    if (!stricmp(strrchr(filename, '.'), ".rvmat"))
+        return 0; // Don't need rvmats to the list
+
+    // Scan List again for WRPs (want p3ds etc reverted before attempting to binarize wrp)
+    ptr = wrp_temp_folderlist;
     while (ptr != NULL) {
-        if (!stricmp(ptr->filename, temp))  // Check if filename already added
-            return;
+        strcpy(temp, dest);
+        if (!stricmp(ptr->filename, temp))
+            return 0; // Already Added
+
+        if (strlens(ptr->filename) > strlens(temp)) {
+            strcat(temp, ((ptr->filename) + strlens(ptr->filename)));
+            if (!stricmp(ptr->filename, temp)) {
+                strcpy(ptr->filename, dest); // Path is upper directory for ptr->filename
+                return 0;
+            }
+        }
+        ptr_previous = ptr;
         ptr = ptr->next;
     }
 
-    ptr = *list;
+    // Add to List
+    ptr = wrp_temp_folderlist;
     if (ptr == NULL) {
         ptr = malloc(sizeof(struct filelist));
         ptr->next = NULL;
-        *list = ptr;
-    } else {
+        wrp_temp_folderlist = ptr;
+    }
+    else {
         while ((ptr->next) != NULL) {
             ptr = ptr->next;
         }
@@ -62,45 +111,33 @@ void wrp_add_filelist(struct filelist **list, char *filename) {
         ptr->next->next = NULL;
         ptr = ptr->next;
     }
-    strcpy(ptr->filename, temp);
+    strcpy(ptr->filename, dest);
+    return 0;
 }
 
 
-void wrp_get_filelist(struct filelist **list, char *tempfolder_root) {
+int wrp_bin_dependency() {
     /*
-    * Reverts files back to original name,
-    *   that were renamed by build_add_ignore
-    *
+    * Copies filename parent directory to tempfolder_root
+    *   Copy parent & sub directories, faster than searching for location for each p3d/rvmat
+    *   Majority of the time dependencies are in parent/sub directories.
+    *   Also files will be scanned for dependencies afterwards before getting binarized.
     */
-    struct filelist *ptr = *list;
+    struct filelist *ptr;
     struct filelist *ptr_previous;
-    char *fileext;
-    char dest[2048];
-    char path[2048];
 
     // Scan List again for WRPs (want p3ds etc reverted before attempting to binarize wrp)
-    ptr = *list;
+    ptr = wrp_temp_folderlist;
     while (ptr != NULL) {
-        fileext = strrchr(ptr->filename, '.');
-        if (fileext != NULL) {
-            strcpy(dest, tempfolder_root);
-            strcat(dest, (ptr->filename) + 1);
-            if ((!file_exists(dest)) && (!find_file(ptr->filename, "", path, true, false))) {
-                strcpy(dest, tempfolder_root);
-                strcat(dest, (ptr->filename)+1);
-                copy_file(path, dest);
-            }
-            if (!stricmp(fileext, ".p3d")) {
-                infof("  p3d: %s\n", ptr->filename);
-            } else if (!stricmp(fileext, ".rvmat")) {
-                infof("  rvmat: %s\n", ptr->filename);
-            }
-        }
+
+        //attempt_bis_bulk_binarize(ptr->filename);
+
         ptr_previous = ptr;
         ptr = ptr->next;
         free(ptr_previous);
     }
-    *list = NULL;
+    wrp_temp_folderlist = NULL;
+    return 0;
 }
 
 
@@ -170,7 +207,7 @@ int wrp_parse_8WVR(FILE *wrp_map) {
             return -1;
         }
         else {
-            wrp_add_filelist(&wrp_rvmat_fileslist, buffer);
+            wrp_add_dependency(buffer);
         }
     }
 
@@ -188,18 +225,19 @@ int wrp_parse_8WVR(FILE *wrp_map) {
 
         fread(dObjName,sizeof(char),len, wrp_map);
         dObjName[len] = 0;
-        wrp_add_filelist(&wrp_p3d_fileslist, dObjName);
+        wrp_add_dependency(dObjName);
     }
     // should now be at eof
     //printf(" Done\nNumber of P3D objects: %ld\n", dObjIndex);
 
     printf ("All fine, 8WVR file read, exiting. Have a nice day!\n");
     fclose(wrp_map);
+    wrp_bin_dependency();
     return 0;
 }
 
-
-int wrp_parse_4WVR(FILE *wrp_map) {
+/*
+int wrp_parse_4WVR(FILE *wrp_map, char *tempfolder_root) {
     char dObjName[2048];
     char sig[33];
     float dDir[3][4];
@@ -252,6 +290,7 @@ int wrp_parse_4WVR(FILE *wrp_map) {
     fclose(wrp_map);
     return 0;
 }
+*/
 
 
 int wrp_parse(char *path) {
@@ -261,6 +300,7 @@ int wrp_parse(char *path) {
     wrp_map = fopen(path, "rb");
     if (!wrp_map) {
         //TODO ERROR
+        return -1;
     }
 
     fread(sig, 4, 1, wrp_map);
@@ -269,10 +309,10 @@ int wrp_parse(char *path) {
     // 8WVR, ArmA style
     if (strcmp(sig, "8WVR") == 0)
         return wrp_parse_8WVR(wrp_map);
-
+    /*
     // 4WVR, OFP style
     if (strcmp(sig, "4WVR") == 0)
-        return wrp_parse_4WVR(wrp_map);
-
+        return wrp_parse_4WVR(wrp_map, tempfolder_root);
+    */
     return -1;
 }
