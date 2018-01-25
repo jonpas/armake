@@ -63,7 +63,7 @@ bool file_exists_fuzzy(char *path) {
     int status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
     if (!status) {
         infof("DEBUG: %s\n", path);
-        if (!stricmp(strrchr(path, '.'), ".tga")) {
+        if ((!stricmp(strrchr(path, '.'), ".tga")) || (!stricmp(strrchr(path, '.'), ".png"))) {
             char alternative_path[2048];
             strncpy(alternative_path, path, sizeof(alternative_path));
             strcpy(strchr(alternative_path, '.'), ".paa");
@@ -599,15 +599,16 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
     char fileext[64];
     char filename[1024];
 
+    strcpy(filename, strrchr(source, PATHSEP) + 1);
+
     if (strrchr(source, '.') != NULL) {
         strcpy(fileext, strrchr(source, '.'));
-        if (fileext != NULL && (!stricmp(fileext, ".h")) || (!stricmp(fileext, ".hpp")))
-            status = 0;
-    } else {
-        strcpy(filename, strrchr(source, PATHSEP) + 1);
-        if (!stricmp(filename, "$PBOPREFIX$"))
+        if (fileext != NULL && ((!stricmp(fileext, ".h")) || (!stricmp(fileext, ".hpp")) || (!stricmp(fileext, ".cpp"))))
             status = 0;
         else if (!stricmp(filename, "$PBOPREFIX$.txt"))
+            status = 0;
+    } else {
+        if (!stricmp(filename, "$PBOPREFIX$"))
             status = 0;
     }
     if (status == 0) {

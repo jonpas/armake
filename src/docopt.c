@@ -38,8 +38,8 @@ const char help_message[] =
 "\n"
 "Usage:\n"
 #ifdef _WIN32
-"    armake binarize [-f] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
-"    armake build [-f] [-p] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #else
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
@@ -82,7 +82,6 @@ const char help_message[] =
 "    -z --compress      Compress final PAA where possible.\n"
 "    -t --type          PAA type. One of: DXT1, DXT3, DXT5, ARGB4444, ARGB1555, AI88\n"
 "                           Currently only DXT1 and DXT5 are implemented.\n"
-"    -B --binpath       Arma Bin Directory Location.\n"
 "    -T --temppath      Armake Temp Directory Location.\n"
 "    -h --help          Show usage information and exit.\n"
 "    -v --version       Print the version number and exit.\n"
@@ -106,8 +105,8 @@ const char help_message[] =
 const char usage_pattern[] =
 "Usage:\n"
 #ifdef _WIN32
-"    armake binarize [-f] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
-"    armake build [-f] [-p] [-w <wname>] [-B <binfolder>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
+"    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #else
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
@@ -330,8 +329,6 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->packonly = option->value;
         }  else if (!strcmp(option->olong, "--temppath")) {
             args->temp = option->value;
-        } else if (!strcmp(option->olong, "--binpath")) {
-            args->bin = option->value;
         } else if (!strcmp(option->olong, "--type")) {
             args->type = option->value;
         } else if (!strcmp(option->olong, "--version")) {
@@ -405,8 +402,8 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     DocoptArgs args = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         usage_pattern, help_message
     };
     Tokens ts;
@@ -433,7 +430,6 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"<privatekey>", NULL, NULL},
         {"<source>", NULL, NULL},
         {"<target>", NULL, NULL},
-        {"<binpath>", NULL, NULL },
         {"<wname>", NULL, NULL},
         {"<xlist>", NULL, NULL},
         {"<temppath>", NULL, NULL }
@@ -450,11 +446,10 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-p", "--packonly", 0, 0, NULL},
         {"-t", "--type", 0, 0, NULL},
         {"-T", "--temppath", 0, 0, NULL},
-        {"-B", "--binpath", 0, 0, NULL },
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };
-    Elements elements = {10, 14, 14, commands, arguments, options};
+    Elements elements = {10, 13, 13, commands, arguments, options};
 
     ts = tokens_new(argc, argv);
     if (parse_args(&ts, &elements))

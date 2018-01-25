@@ -105,4 +105,4 @@ void rapify_class(struct class *class, FILE *f_target);
 
 int rapify_file(char *source, char *target);
 
-int parse_file_get_dependencies(char *source, struct filelist **files);
+int rapify_file_get_files(char *filename, char *target, char *tempfolder_root);

@@ -34,5 +34,5 @@ int attempt_bis_texheader(char *target);
 int attempt_bis_bulk_binarize(char *source);
 #endif
 
-int binarize(char *source, char *target, bool force_p3d);
+int binarize(char *source, char *target, char *tempfolder, bool force_p3d);
 int cmd_binarize();

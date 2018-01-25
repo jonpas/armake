@@ -61,7 +61,6 @@ typedef struct {
     char *source;
     char *target;
     char *temppath;
-    char *binpath;
     char *wname;
     char *xlist;
     /* options without arguments */
@@ -78,7 +77,6 @@ typedef struct {
     int version;
     int warning;
     int temp;
-    int bin;
     /* special */
     const char *usage_pattern;
     const char *help_message;
@@ -125,7 +123,7 @@ char exclude_files[MAXEXCLUDEFILES][512];
 char include_folders[MAXINCLUDEFOLDERS][512];
 char includeforce_folders[MAXINCLUDEFOLDERS][512];
 #ifdef _WIN32
-wchar_t wc_addonbinpaths[(MAXINCLUDEFOLDERS*(512+8))+2048];  // -addon=  + binPath
+wchar_t wc_addonpaths[(MAXINCLUDEFOLDERS*(512))];
 #endif
 char muted_warnings[MAXWARNINGS][512];
 

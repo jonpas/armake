@@ -26,7 +26,6 @@
 
 struct filelist *wrp_temp_folderlist;
 
-int wrp_add_dependency(char *filename);
-int wrp_bin_dependency();
+int wrp_add_dependency(char *filename, char *tempfolder_root);
 
-int wrp_parse(char *path);
+int wrp_parse(char *source, char *tempfolder_root);

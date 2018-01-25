@@ -71,51 +71,6 @@ int check_bis_binarize() {
 }
 
 
-int get_rvmat_dependencies(char *filename, char *tempfolder) {
-    /*
-    * Copies filename rvmat depenencies to tempfolder location
-    * i.e if rvmat is using textures/bisurf from a3/, need to copy this into temp folder for BI binarize
-    */
-
-    struct filelist *files_previous;
-    struct filelist *files;
-    files = NULL;
-    infof("DEBUG: %s\n", filename);
-    parse_file_get_dependencies(filename, &files);
-    while (files != NULL) {
-        progressf();
-        if ((strncmp(files->filename, "#", 1) != 0) && 
-        (strncmp(files->filename, "(", 1) != 0)  && 
-        ((strlens(files->filename) > 0))) {
-            char texture_path_corrected[2048] = PATHSEP_STR;
-            strcat(texture_path_corrected, files->filename);
-            char temp_filename[2048];
-            strcpy(temp_filename, tempfolder);
-            if (temp_filename[strlen(temp_filename) - 1] != PATHSEP)
-                strcat(temp_filename, PATHSEP_STR);
-            strcat(temp_filename, files->filename);
-            if (!file_exists_fuzzy(temp_filename)) {
-                if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
-                    warningf("Failed to find file %s\n", filename);
-                }
-                else {
-                    strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
-                    if (copy_file(texture_path_corrected, temp_filename)) {
-                        errorf("Failed to copy %s to temp folder %s.\n", texture_path_corrected, temp_filename);
-                        return 3;
-                    }
-                }
-            }
-        }
-
-        files_previous = files;
-        files = files->next;
-        free(files_previous);
-    }
-    return 0;
-}
-
-
 int get_p3d_dependencies(char *source, char *tempfolder_root) {
     /*
     * Copies p3d depenencies to tempfolder location
@@ -134,10 +89,9 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
 
     // Read P3D and create a list of required files
     f_source = fopen(source, "rb");
-    if (!f_source) {
-        fclose(f_source);
+    if (!f_source)
         return 1;
-    }
+
 
     fseek(f_source, 8, SEEK_SET);
     fread(&num_lods, 4, 1, f_source);
@@ -231,7 +185,7 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
         }
         char *ext = strrchr(filename, '.');
         if ((ext != NULL) && (stricmp(ext, ".rvmat") == 0))
-            get_rvmat_dependencies(filename, tempfolder_root);
+            rapify_file_get_files(filename, filename, tempfolder_root);
 
 
         free(dependencies[i]);
@@ -255,7 +209,7 @@ int attempt_bis_binarize(char *source, char *target) {
     PROCESS_INFORMATION processInfo;
     long success;
 
-    size_t wc_command_len = 2048 + wcslens(wc_addonbinpaths);
+    size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
     wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
     wchar_t wc_temp[2048];
     char tempfolder[2048];
@@ -324,19 +278,12 @@ int attempt_bis_binarize(char *source, char *target) {
     GetFullPathName(wc_target, 2048, wc_temp, NULL);
     *(wcsrchr(wc_temp, PATHSEP)) = 0;
 
-    if (wcslens(wc_addonbinpaths) <= 0)
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -norecurse -always -maxProcesses=0 %ls %ls",
-            wc_binarize, wc_tempfolder, wc_temp);
+    if (wcslens(wc_addonpaths) <= 0)
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -norecurse -always -maxProcesses=0 -binpath=%ls %ls %ls",
+            wc_binarize, wc_tempfolder, wc_tempfolder, wc_temp);
     else
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -norecurse -always -maxProcesses=0 %ls %ls %ls",
-            wc_binarize, wc_addonbinpaths, wc_tempfolder, wc_temp);
-
-    if (strlens(args.binpath) > 0) {
-        wchar_t wc_binpath[2048];
-        mbstowcs(wc_binpath, args.binpath, 2048);
-        wcscat(wc_command, L" -binpath=");
-        wcscat(wc_command, wc_binpath);
-    }
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -norecurse -always -maxProcesses=0 -binpath=%ls %ls %ls %ls",
+            wc_binarize, wc_tempfolder, wc_addonpaths, wc_tempfolder, wc_temp);
 
     if (getenv("BIOUTPUT")) {
         char *command = malloc(sizeof(char) * (wc_command_len + 1));
@@ -392,7 +339,7 @@ int attempt_bis_bulk_binarize(char *source) {
     STARTUPINFO info = { sizeof(info) };
     PROCESS_INFORMATION processInfo;
 
-    size_t wc_command_len = 2048 + wcslens(wc_addonbinpaths);
+    size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
     wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
     wchar_t wc_build[2048];
 
@@ -411,12 +358,12 @@ int attempt_bis_bulk_binarize(char *source) {
     copy_bulk_p3ds_dependencies(source, &ignore_data);
 
 
-    if ((wcslens(wc_addonbinpaths) <= 0) && (strlens(args.binpath) <= 0)) {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls",
-            wc_binarize, wc_build, wc_build);
+    if (wcslens(wc_addonpaths) <= 0) {
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls",
+            wc_binarize, wc_temppath, wc_build, wc_build);
     } else {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 %ls %ls %ls",
-            wc_binarize, wc_addonbinpaths, wc_build, wc_build);
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls %ls",
+            wc_binarize, wc_temppath, wc_addonpaths, wc_build, wc_build);
     }
 
 
@@ -732,7 +679,7 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     PROCESS_INFORMATION processInfo;
     long success = 0;
 
-    size_t wc_command_len = 2048 + wcslens(wc_addonbinpaths);
+    size_t wc_command_len = 2048 + wcslens(wc_addonpaths);
     wchar_t *wc_command = malloc(sizeof(wchar_t) * (wc_command_len + 1));
 
     char temp[2048];
@@ -767,7 +714,7 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
 
 
     infof("Scanning %s\n", target);
-    wrp_parse(target);
+    wrp_parse(target, temppath);
 
     infof("Binarizing %s\n", filename);
     if (create_temp_folder(filename, tempfolder, 2048)) {
@@ -804,13 +751,13 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     *(wcsrchr(wc_target, '\\')) = 0;
 
 
-    if ((wcslens(wc_addonbinpaths) <= 0) && (strlens(args.binpath) <= 0)) {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls",
-            wc_binarize, wc_temppath, wc_build, wc_target);
+    if (wcslens(wc_addonpaths) <= 0) {
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls -textures=%ls %ls %ls",
+            wc_binarize, wc_temppath, wc_temppath, wc_build, wc_target);
     }
     else {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -textures=%ls %ls %ls %ls",
-            wc_binarize, wc_temppath, wc_addonbinpaths, wc_build, wc_target);
+        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls -textures=%ls %ls %ls %ls",
+            wc_binarize, wc_temppath, wc_temppath, wc_addonpaths, wc_build, wc_target);
     }
 
 
@@ -871,7 +818,7 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
 #endif
 
 
-int binarize(char *source, char *target, bool force_p3d) {
+int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
     /*
      * Binarize the given file. If source and target are identical, the target
      * is overwritten. If the source is a P3D, it is converted to ODOL. If the
@@ -894,9 +841,9 @@ int binarize(char *source, char *target, bool force_p3d) {
     strncpy(fileext, strrchr(source, '.'), 64);
 
     if (!stricmp(fileext, ".cpp") ||
-            !stricmp(fileext, ".rvmat") ||
-            !stricmp(fileext, ".ext"))
-        return rapify_file(source, target);
+        !stricmp(fileext, ".rvmat") ||
+        !stricmp(fileext, ".ext"))
+        return rapify_file_get_files(source, target, tempfolder);
 
     if (!stricmp(fileext, ".rtm")) {
         return attempt_bis_binarize_rtm(source, target);
@@ -935,7 +882,7 @@ int cmd_binarize() {
         return 1;
     }
 
-    int success = binarize(args.source, args.target, true);
+    int success = binarize(args.source, args.target, NULL, true);
 
     if (success == -1) {
         errorf("File is no P3D and doesn't seem rapifiable.\n");

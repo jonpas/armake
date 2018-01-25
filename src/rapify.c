@@ -340,137 +340,6 @@ void parse_class_dependencies(struct class *result, struct filelist **files)
 }
 
 
-int parse_file_get_dependencies(char *source, struct filelist **files) {
-    /*
-    * Resolves macros/includes and of a given file.
-    *
-    * 2nd Argument **files is for struct of files referenced i.e texture/surfaceInfo
-    */
-
-    FILE *f_temp;
-
-    int i;
-    int success;
-    char buffer[4096];
-    uint32_t enum_offset = 0;
-    struct constants *constants;
-    struct lineref *lineref;
-
-    current_operation = OP_RAPIFY;
-    strcpy(current_target, source);
-
-    // Check if the file is already rapified
-    f_temp = fopen(source, "rb");
-    if (!f_temp) {
-        errorf("Failed to open %s.\n", source);
-        return 1;
-    }
-
-    fread(buffer, 4, 1, f_temp);
-    if (strncmp(buffer, "\0raP", 4) == 0) {
-        fclose(f_temp);
-        return 0;
-    } else {
-        fclose(f_temp);
-    }
-
-#ifdef _WIN32
-    char temp_name[2048];
-    wchar_t wc_temp_name[2048];
-    if (!GetTempFileName(L".", L"amk", 0, wc_temp_name)) {
-        errorf("Failed to get temp file name (system error %i).\n", GetLastError());
-        return 1;
-    }
-    wcstombs(temp_name, wc_temp_name, 2048);
-    f_temp = fopen(temp_name, "wb+");
-#else
-    f_temp = tmpfile();
-#endif
-
-    if (!f_temp) {
-        errorf("Failed to open temp file.\n");
-#ifdef _WIN32
-        remove_file(temp_name);
-#endif
-        return 1;
-    }
-
-    for (i = 0; i < MAXINCLUDES; i++)
-        include_stack[i][0] = 0;
-
-    constants = constants_init();
-
-    lineref = (struct lineref *)malloc(sizeof(struct lineref));
-    lineref->num_files = 0;
-    lineref->num_lines = 0;
-    lineref->file_index = (uint32_t *)malloc(sizeof(uint32_t) * LINEINTERVAL);
-    lineref->line_number = (uint32_t *)malloc(sizeof(uint32_t) * LINEINTERVAL);
-
-    success = preprocess(source, f_temp, constants, lineref);
-
-    current_operation = OP_RAPIFY;
-    strcpy(current_target, source);
-
-    if (success) {
-        errorf("Failed to preprocess %s.\n", source);
-        fclose(f_temp);
-#ifdef _WIN32
-        remove_file(temp_name);
-#endif
-        return success;
-    }
-
-#if 0
-    FILE *f_dump;
-
-    char dump_name[2048];
-    sprintf(dump_name, "armake_preprocessed_%u.dump", (unsigned)time(NULL));
-    printf("Done with preprocessing, dumping preprocessed config to %s.\n", dump_name);
-
-    f_dump = fopen(dump_name, "wb");
-    fseek(f_temp, 0, SEEK_END);
-    datasize = ftell(f_temp);
-
-    fseek(f_temp, 0, SEEK_SET);
-    for (i = 0; datasize - i >= sizeof(buffer); i += sizeof(buffer)) {
-        fread(buffer, sizeof(buffer), 1, f_temp);
-        fwrite(buffer, sizeof(buffer), 1, f_dump);
-    }
-
-    fread(buffer, datasize - i, 1, f_temp);
-    fwrite(buffer, datasize - i, 1, f_dump);
-
-    fclose(f_dump);
-#endif
-
-    fseek(f_temp, 0, SEEK_SET);
-    struct class *result;
-    result = parse_file(f_temp, lineref);
-    fclose(f_temp);
-
-    if (result == NULL) {
-        errorf("Failed to parse config.\n");
-        return 1;
-    }
-
-    parse_class_dependencies(result, files);
-
-
-#ifdef _WIN32
-    remove_file(temp_name);
-#endif
-
-    constants_free(constants);
-
-    free(lineref->file_index);
-    free(lineref->line_number);
-    free(lineref);
-
-    free_class(result);
-
-    return 0;
-}
-
 int rapify_file(char *source, char *target) {
     /*
      * Resolves macros/includes and rapifies the given file. If source and
@@ -638,5 +507,244 @@ int rapify_file(char *source, char *target) {
 
     free_class(result);
 
+    return 0;
+}
+
+
+int rapify_file_get_filelist(char *source, char *target, struct filelist **files) {
+    /*
+    * Resolves macros/includes and rapifies the given file. If source and
+    * target are identical, the target is overwritten.
+    *
+    * Returns 0 on success and a positive integer on failure.
+    * 2nd Argument **files is for struct of files referenced i.e texture/surfaceInfo
+    */
+
+    FILE *f_temp;
+    FILE *f_target;
+    int i;
+    int datasize;
+    int success;
+    char buffer[4096];
+    uint32_t enum_offset = 0;
+    struct constants *constants;
+    struct lineref *lineref;
+
+    current_operation = OP_RAPIFY;
+    strcpy(current_target, source);
+
+    // Check if the file is already rapified
+    f_temp = fopen(source, "rb");
+    if (!f_temp) {
+        errorf("Failed to open %s.\n", source);
+        return 1;
+    }
+
+    fread(buffer, 4, 1, f_temp);
+    if (strncmp(buffer, "\0raP", 4) == 0) {
+        if ((strcmp(source, target)) == 0) {
+            fclose(f_temp);
+            return 0;
+        }
+
+        f_target = fopen(target, "wb");
+        if (!f_target) {
+            errorf("Failed to open %s.\n", target);
+            fclose(f_temp);
+            return 2;
+        }
+
+        fseek(f_temp, 0, SEEK_END);
+        datasize = ftell(f_temp);
+
+        fseek(f_temp, 0, SEEK_SET);
+        for (i = 0; datasize - i >= sizeof(buffer); i += sizeof(buffer)) {
+            fread(buffer, sizeof(buffer), 1, f_temp);
+            fwrite(buffer, sizeof(buffer), 1, f_target);
+        }
+        fread(buffer, datasize - i, 1, f_temp);
+        fwrite(buffer, datasize - i, 1, f_target);
+
+        fclose(f_temp);
+        fclose(f_target);
+
+        return 0;
+    }
+    else {
+        fclose(f_temp);
+    }
+
+#ifdef _WIN32
+    char temp_name[2048];
+    wchar_t wc_temp_name[2048];
+    if (!GetTempFileName(L".", L"amk", 0, wc_temp_name)) {
+        errorf("Failed to get temp file name (system error %i).\n", GetLastError());
+        return 1;
+    }
+    wcstombs(temp_name, wc_temp_name, 2048);
+    f_temp = fopen(temp_name, "wb+");
+#else
+    f_temp = tmpfile();
+#endif
+
+    if (!f_temp) {
+        errorf("Failed to open temp file.\n");
+#ifdef _WIN32
+        remove_file(temp_name);
+#endif
+        return 1;
+    }
+
+    for (i = 0; i < MAXINCLUDES; i++)
+        include_stack[i][0] = 0;
+
+    constants = constants_init();
+
+    lineref = (struct lineref *)malloc(sizeof(struct lineref));
+    lineref->num_files = 0;
+    lineref->num_lines = 0;
+    lineref->file_index = (uint32_t *)malloc(sizeof(uint32_t) * LINEINTERVAL);
+    lineref->line_number = (uint32_t *)malloc(sizeof(uint32_t) * LINEINTERVAL);
+
+    success = preprocess(source, f_temp, constants, lineref);
+
+    current_operation = OP_RAPIFY;
+    strcpy(current_target, source);
+
+    if (success) {
+        errorf("Failed to preprocess %s.\n", source);
+        fclose(f_temp);
+#ifdef _WIN32
+        remove_file(temp_name);
+#endif
+        return success;
+    }
+
+#if 0
+    FILE *f_dump;
+
+    char dump_name[2048];
+    sprintf(dump_name, "armake_preprocessed_%u.dump", (unsigned)time(NULL));
+    printf("Done with preprocessing, dumping preprocessed config to %s.\n", dump_name);
+
+    f_dump = fopen(dump_name, "wb");
+    fseek(f_temp, 0, SEEK_END);
+    datasize = ftell(f_temp);
+
+    fseek(f_temp, 0, SEEK_SET);
+    for (i = 0; datasize - i >= sizeof(buffer); i += sizeof(buffer)) {
+        fread(buffer, sizeof(buffer), 1, f_temp);
+        fwrite(buffer, sizeof(buffer), 1, f_dump);
+    }
+
+    fread(buffer, datasize - i, 1, f_temp);
+    fwrite(buffer, datasize - i, 1, f_dump);
+
+    fclose(f_dump);
+#endif
+
+    fseek(f_temp, 0, SEEK_SET);
+    struct class *result;
+    result = parse_file(f_temp, lineref);
+
+    if (result == NULL) {
+        errorf("Failed to parse config.\n");
+        return 1;
+    }
+
+    // Get File References
+    parse_class_dependencies(result, files);
+
+    // Rapify file
+    f_target = fopen(target, "wb+");
+    if (!f_target) {
+        errorf("Failed to open %s.\n", target);
+        fclose(f_temp);
+        return 2;
+    }
+    fwrite("\0raP", 4, 1, f_target);
+    fwrite("\0\0\0\0\x08\0\0\0", 8, 1, f_target);
+    fwrite(&enum_offset, 4, 1, f_target); // this is replaced later
+
+    rapify_class(result, f_target);
+
+    enum_offset = ftell(f_target);
+    fwrite("\0\0\0\0", 4, 1, f_target); // fuck enums
+    fseek(f_target, 12, SEEK_SET);
+    fwrite(&enum_offset, 4, 1, f_target);
+
+    fclose(f_temp);
+    fclose(f_target);
+
+#ifdef _WIN32
+    remove_file(temp_name);
+#endif
+
+    constants_free(constants);
+
+    free(lineref->file_index);
+    free(lineref->line_number);
+    free(lineref);
+
+    free_class(result);
+
+    return 0;
+}
+
+
+int rapify_file_get_files(char *source, char *target, char *tempfolder) {
+    /*
+    * Resolves macros/includes and rapifies the given file. If source and
+    * target are identical, the target is overwritten.
+    *
+    * Copies file references to tempfolder_root
+    * Returns 0 on success, positive integer on failure, and negative number on failure to copy a file referenced
+    */
+    
+    if ((tempfolder == NULL) || (strlens(tempfolder) <= 0))
+        return rapify_file(source, target);
+
+    struct filelist *files_previous;
+    struct filelist *files;
+    files = NULL;
+    infof("DEBUG: %s\n", source);
+    int ret = rapify_file_get_filelist(source, target, &files);
+    if (ret) return ret;
+    while (files != NULL) {
+        progressf();
+        if ((strncmp(files->filename, "#", 1) != 0) &&
+            (strncmp(files->filename, "(", 1) != 0) &&
+            ((strlens(files->filename) > 0))) {
+            char texture_path_corrected[2048] = PATHSEP_STR;
+            strcat(texture_path_corrected, files->filename);
+            char temp_filename[2048];
+            strcpy(temp_filename, tempfolder);
+            if (temp_filename[strlen(temp_filename) - 1] != PATHSEP)
+                strcat(temp_filename, PATHSEP_STR);
+            strcat(temp_filename, files->filename);
+            if (!file_exists(temp_filename)) {
+                if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
+                    warningf("Failed to find file %s\n", texture_path_corrected);
+                    return -1;
+                } else {
+                    strcpy(strrchr(temp_filename, '.'), strrchr(texture_path_corrected, '.')); // Incase copying .paa instead of .tga
+                    if (copy_file(texture_path_corrected, temp_filename)) {
+                        errorf("Failed to copy %s to temp folder %s.\n", texture_path_corrected, temp_filename);
+                        return -2;
+                    }
+                    char fileext[64];
+                    strncpy(fileext, strrchr(temp_filename, '.'), 64);
+                    if (!stricmp(fileext, ".cpp") ||
+                        !stricmp(fileext, ".rvmat") ||
+                        !stricmp(fileext, ".ext"))
+                        return (rapify_file_get_files(source, target, tempfolder) == 0);
+                }
+            }
+        }
+
+        files_previous = files;
+        files = files->next;
+        free(files_previous);
+    }
     return 0;
 }

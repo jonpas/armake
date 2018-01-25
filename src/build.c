@@ -36,7 +36,7 @@
 #include "unistdwrapper.h"
 
 
-int binarize_callback(char *root, char *source, char *junk) {
+int binarize_callback(char *root, char *source, char *tempfolder) {
     int success;
     char target[2048];
 
@@ -47,7 +47,7 @@ int binarize_callback(char *root, char *source, char *junk) {
         strcpy(target + strlen(target) - 3, "bin");
     }
 
-    success = binarize(source, target, false);
+    success = binarize(source, target, tempfolder, false);
 
     if (success > 0)
         return success * -1;
@@ -284,7 +284,7 @@ int hash_file(char *path, unsigned char *hash) {
 }
 
 
-int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tempfolder_size, char *addonprefix, size_t addonprefix_size) {
+int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tempfolder_size, char *addonprefix, size_t addonprefix_size, char *tempfolder_root) {
     // preprocess and binarize stuff if required
     char nobinpath[1024];
     char notestpath[1024];
@@ -294,7 +294,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
     strcpy(notestpath + strlen(notestpath) - 11, "$NOBIN-NOTEST$");
     if (!args.packonly && access(nobinpath, F_OK) == -1 && access(notestpath, F_OK) == -1) {
         infof("Binarizing configs/rtms...\n");
-        if (traverse_directory(tempfolder, false, binarize_callback, "")) {
+        if (traverse_directory(tempfolder, false, binarize_callback, tempfolder_root)) {
             current_operation = OP_BUILD;
             strcpy(current_target, args.source);
             errorf("Failed to binarize some files.\n");
@@ -447,6 +447,11 @@ int cmd_build() {
     current_operation = OP_BUILD;
     strcpy(current_target, args.source);
 
+    // Get Temp Root Directory
+    char tempfolder_root[2048];
+    char target[2048];
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+
     // check if target already exists
     FILE *f_target;
     if (access(args.target, F_OK) != -1 && !args.force) {
@@ -522,10 +527,6 @@ int cmd_build() {
         return 3;
     }
 
-    char tempfolder_root[2048];
-    char target[2048];
-    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
-
     if (args.includeforce > 0) {
         strcpy(target, tempfolder);
         if (target[strlen(target) - 1] != PATHSEP)
@@ -544,7 +545,7 @@ int cmd_build() {
     }
 #endif
 
-    int success = build(prefixpath, sizeof(prefixpath), tempfolder, sizeof(tempfolder), addonprefix, sizeof(addonprefix));
+    int success = build(prefixpath, sizeof(prefixpath), tempfolder, sizeof(tempfolder), addonprefix, sizeof(addonprefix), tempfolder_root);
     if (success != 0) {
         return success;
     }
