@@ -32,10 +32,24 @@
 #include "filesystem.h"
 #include "keygen.h"
 #include "sign.h"
+#include "utils.h"
 #include "version.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    // Disable QuickEdit on Console, to prevent user accidentally freezing program
+    HANDLE hConsole = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD dwPreviousMode = 0;
+    DWORD dwNewMode = dwPreviousMode | ENABLE_MOUSE_INPUT;
+    dwNewMode &= ~ENABLE_QUICK_EDIT_MODE;
+    SetConsoleMode(hConsole, dwNewMode | ENABLE_EXTENDED_FLAGS);
+#endif
+
     extern DocoptArgs args;
     extern char exclude_files[MAXEXCLUDEFILES][512];
     extern char include_folders[MAXINCLUDEFOLDERS][512];
@@ -103,8 +117,15 @@ int main(int argc, char *argv[]) {
             args.privatekey = argv[i + 1];
         if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--type") == 0)
             args.paatype = argv[i + 1];
-        if (strcmp(argv[i], "-T") == 0 || strcmp(argv[i], "--temppath") == 0)
+        if (strcmp(argv[i], "-T") == 0 || strcmp(argv[i], "--temppath") == 0) {
             args.temppath = argv[i + 1];
+            if ((strlens(args.temppath) == 0) || 
+                (strchr(args.temppath, PATHSEP) == NULL) ||
+                (strcmp(strchr(args.temppath, PATHSEP), PATHSEP_STR) == 0)) {
+                    errorf("Bad Temp Path: %s", args.temppath);
+                    return 1;
+            }
+        };
     }
 
 

@@ -138,7 +138,6 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
         free(mlod_lods[i].sharp_edges);
 
         for (j = 0; j < mlod_lods[i].num_selections; j++) {
-            infof(mlod_lods[i].selections[j].name);
             if (strncmp(mlod_lods[i].selections[j].name, "proxy:", 6) == 0) {
                 char proxy_filename[2048];
                 strcpy(proxy_filename, tempfolder_root);
@@ -156,7 +155,7 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
                     char proxy_temp_filename[2048];
                     strcpy(proxy_temp_filename, tempfolder_root);
                     strcat(proxy_temp_filename, (mlod_lods[i].selections[j].name) + 6);
-                    get_p3d_dependencies(proxy_temp_filename, tempfolder_root); // TODO Make filelist of proxies & check them for dependencies
+                    get_p3d_dependencies(proxy_temp_filename, tempfolder_root); // TODO Optimize???
                 }
 
             }
@@ -373,10 +372,12 @@ int attempt_bis_bulk_binarize(char *source) {
     get_temp_path(temppath, 2048);
     mbstowcs(wc_temppath, temppath, 2048);
 
-    infof("Checking for P3D(s) for dependencies...\n");
+    infof("Checking P3D(s) for dependencies...\n");
     struct build_ignore_data ignore_data;
+    ignore_data.fileslist = NULL;
     strcpy(ignore_data.tempfolder_root, temppath);
     copy_bulk_p3ds_dependencies(source, &ignore_data);
+
 
 
     if (wcslens(wc_addonpaths) <= 0) {
@@ -395,12 +396,16 @@ int attempt_bis_bulk_binarize(char *source) {
         free(command);
     }
 
-    if (getenv("BIOUTPUT")) {
-        secattr.lpSecurityDescriptor = NULL;
-        secattr.bInheritHandle = TRUE;
-        info.hStdOutput = info.hStdError = CreateFile(L"NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
-        info.dwFlags |= STARTF_USESTDHANDLES;
-    }
+    wchar_t wc_logfile[2048];
+    wcscpy(wc_logfile, wc_temppath);
+    wcscat(wc_logfile, L"\\");
+    wcscat(wc_logfile, L"armake_");
+    wcscat(wc_logfile, L"bin_bulk.log");
+
+    secattr.lpSecurityDescriptor = NULL;
+    secattr.bInheritHandle = TRUE;
+    info.hStdOutput = info.hStdError = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    info.dwFlags |= STARTF_USESTDHANDLES;
 
     infof("Binarzing bulk...\n");
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
@@ -643,12 +648,16 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
         debugf("cmdline: %s\n", command);
     }
 
-    if (!getenv("BIOUTPUT")) {
-        secattr.lpSecurityDescriptor = NULL;
-        secattr.bInheritHandle = TRUE;
-        info.hStdOutput = info.hStdError = CreateFile(L"NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
-        info.dwFlags |= STARTF_USESTDHANDLES;
-    }
+    wchar_t wc_logfile[2048];
+    char tempfolder_root[2048];
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+    swprintf(wc_logfile, sizeof(wc_logfile), L"%S%Sarmake_rtm_%S.log",
+        tempfolder_root, PATHSEP_STR, rtmname);
+
+    secattr.lpSecurityDescriptor = NULL;
+    secattr.bInheritHandle = TRUE;
+    info.hStdOutput = info.hStdError = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    info.dwFlags |= STARTF_USESTDHANDLES;
 
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_build, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
@@ -781,21 +790,23 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
             wc_binarize, wc_temppath, wc_temppath, wc_addonpaths, wc_build, wc_target);
     }
 
-
     if (getenv("BIOUTPUT")) {
-        char *command = malloc(sizeof(char) * (wc_command_len + 1));
-        wcstombs(command, wc_command, wc_command_len);
+        char command[2048];
+        wcstombs(command, wc_command, 2048);
         debugf("cmdline: %s\n", command);
-        free(command);
     }
+    
+    wchar_t wc_logfile[2048];
+    char tempfolder_root[2048];
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+    swprintf(wc_logfile, sizeof(wc_logfile), L"%S%Sarmake_wrp_%S.log" ,
+        tempfolder_root, PATHSEP_STR, wrpname);
 
-    if (getenv("BIOUTPUT")) {
-        secattr.lpSecurityDescriptor = NULL;
-        secattr.bInheritHandle = TRUE;
-        info.hStdOutput = info.hStdError = CreateFile(L"NUL", GENERIC_WRITE, 0, &secattr, OPEN_EXISTING, 0, NULL);
-        info.dwFlags |= STARTF_USESTDHANDLES;
-    }
-
+    secattr.lpSecurityDescriptor = NULL;
+    secattr.bInheritHandle = TRUE;
+    info.hStdOutput = info.hStdError = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    info.dwFlags |= STARTF_USESTDHANDLES;
+    
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);

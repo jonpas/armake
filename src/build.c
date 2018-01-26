@@ -400,6 +400,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
     fputc(0, f_target);
     fwrite(checksum, 20, 1, f_target);
     fclose(f_target);
+    infof("Written PBO %s\n", args.target);
 
     // sign pbo
     if (args.key) {
@@ -551,11 +552,15 @@ int cmd_build() {
     }
 
     // remove temp folder
-    infof("Removing Temp Files\n");
-    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
-    if (remove_folder(tempfolder_root)) {
-        errorf("Failed to remove temp folder.\n");
-        return 10;
+    
+    if (!args.temp) {
+        infof("Removing Temp Files\n");
+        get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+        if (remove_folder(tempfolder_root)) {
+            errorf("Failed to remove temp folder.\n");
+            return 10;
+        }
     }
+
     return 0;
 }

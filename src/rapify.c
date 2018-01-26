@@ -707,7 +707,6 @@ int rapify_file_get_files(char *source, char *target, char *tempfolder) {
     struct filelist *files_previous;
     struct filelist *files;
     files = NULL;
-    infof("DEBUG: %s\n", source);
     int ret = rapify_file_get_filelist(source, target, &files);
     if (ret) return ret;
     while (files != NULL) {

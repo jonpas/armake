@@ -62,7 +62,6 @@ bool file_exists_fuzzy(char *path) {
 
     int status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
     if (!status) {
-        infof("DEBUG: %s\n", path);
         if ((!stricmp(strrchr(path, '.'), ".tga")) || (!stricmp(strrchr(path, '.'), ".png"))) {
             char alternative_path[2048];
             strncpy(alternative_path, path, sizeof(alternative_path));
@@ -313,12 +312,19 @@ int remove_folder(char *folder) {
      * failure and 0 on success.
      */
 
-#ifdef _WIN32
+     // Just extra safety that folder path is inside root temp path.
+    char temp_rootfolder[2048];
+    get_temp_path(temp_rootfolder, sizeof(temp_rootfolder));
+    if (strncmp(folder, temp_rootfolder, strlens(temp_rootfolder)) != 0) {
+        errorf("Remove folder error path: %s", folder);
+        return -1;
+    }
+        
 
+#ifdef _WIN32
     // MASSIVE @todo
     char cmd[512];
-    //sprintf(cmd, "rmdir %s /s /q", folder);
-    sprintf(cmd, "rmdir %s /s", folder);
+    sprintf(cmd, "rmdir %s /s /q", folder);
     if (system(cmd))
         return -1;
 
@@ -621,7 +627,6 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
         strcat(target, target_root);
         strcat(target, PATHSEP_STR);
         strcat(target, prefixedpath);
-        //infof("DEBUG: %s -> %s\n", source, target);
         status = copy_file(source, target);
         free(target);
     }
