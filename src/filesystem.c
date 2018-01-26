@@ -639,56 +639,67 @@ int get_prefixpath_directory(char *source, char* addonprefix, size_t addonprefix
     if (source[strlen(source) - 1] == PATHSEP)
         source[strlen(source) - 1] = 0;
 
-    char prefixpath[1024];
+    char pboprefix_folder[1024];
+    char pboprefix_file[1024];
     FILE *f_prefix;
     int success = -1;
 
-    prefixpath[0] = 0;
-    strcat(prefixpath, source);
-    strcat(prefixpath, PATHSEP_STR);
-    strcat(prefixpath, "$PBOPREFIX$");
-    f_prefix = fopen(prefixpath, "rb");  // $PBOPREFIX$
-    if (f_prefix) {
-        char temp[1024];
-        while (fgets(temp, sizeof(temp), f_prefix)) {
-            if (strchr(temp, '=') == NULL) { // Ignore PboProject cfgWorlds setting
-                strncpy(addonprefix, temp, addonprefix_size);
-                success = 0;
-                break;
-            }
-        }
-        fclose(f_prefix);
-    } else {
-        strcat(prefixpath, ".txt");
-        f_prefix = fopen(prefixpath, "rb"); // $PBOPREFIX$.txt
+    strcpy(pboprefix_folder, source);
+
+    while (true) {
+        strcpy(pboprefix_file, pboprefix_folder);
+        strcat(pboprefix_file, PATHSEP_STR);
+        strcat(pboprefix_file, "$PBOPREFIX$");
+        f_prefix = fopen(pboprefix_file, "rb");  // $PBOPREFIX$
         if (f_prefix) {
             char temp[1024];
-            char key[1024];
             while (fgets(temp, sizeof(temp), f_prefix)) {
-                if (strchr(temp, '=') != NULL) { // Ignore PboProject cfgWorlds setting
-                    strcpy(key, temp);
-                    *(strchr(key, '=')) = 0;
-                    if ((!stricmp(key, "prefix")) && ((strchr(temp, '=') + 1) != NULL)) {
-                        strncpy(addonprefix, (strchr(temp, '=') + 1), addonprefix_size);
-                        success = 0;
-                        break;
-                    };
+                if (strchr(temp, '=') == NULL) { // Ignore PboProject cfgWorlds setting
+                    strncpy(addonprefix, temp, addonprefix_size);
+                    strcat(addonprefix, source + strlens(pboprefix_folder));
+                    success = 0;
+                    break;
                 }
             }
             fclose(f_prefix);
+        } else {
+            strcat(pboprefix_file, ".txt");
+            f_prefix = fopen(pboprefix_file, "rb"); // $PBOPREFIX$.txt
+            if (f_prefix) {
+                char temp[1024];
+                char key[1024];
+                while (fgets(temp, sizeof(temp), f_prefix)) {
+                    if (strchr(temp, '=') != NULL) { // Ignore PboProject cfgWorlds setting
+                        strcpy(key, temp);
+                        *(strchr(key, '=')) = 0;
+                        if ((!stricmp(key, "prefix")) && ((strchr(temp, '=') + 1) != NULL)) {
+                            strncpy(addonprefix, (strchr(temp, '=') + 1), addonprefix_size);
+                            strcat(addonprefix, source + strlens(pboprefix_folder));
+                            success = 0;
+                            break;
+                        };
+                    }
+                }
+                fclose(f_prefix);
+            }
         }
-    }
-    if (strlens(addonprefix) <= 0) {
-        if (strrchr(source, PATHSEP) == NULL)
-            strncpy(addonprefix, source, sizeof(addonprefix));
-        else
-            strncpy(addonprefix, strrchr(source, PATHSEP) + 1, sizeof(addonprefix));
+        if (success == 0)
+            break;
+
+        if ((strchr(pboprefix_folder, PATHSEP)) != NULL) {
+            *(strrchr(pboprefix_folder, PATHSEP)) = 0;
+             continue;
+        }
+        strncpy(addonprefix, source, addonprefix_size);
+        success = -1;
+        break;
     }
 
     if (addonprefix[strlen(addonprefix) - 1] == '\n')
         addonprefix[strlen(addonprefix) - 1] = '\0';
     if (addonprefix[strlen(addonprefix) - 1] == '\r')
         addonprefix[strlen(addonprefix) - 1] = '\0';
+
 
     // replace pathseps on linux
 #ifndef _WIN32

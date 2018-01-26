@@ -97,7 +97,6 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
     fread(&num_lods, 4, 1, f_source);
     mlod_lods = (struct mlod_lod *)malloc(sizeof(struct mlod_lod) * num_lods);
     num_lods = read_lods(f_source, mlod_lods, num_lods);
-    fflush(stdout);
     if (num_lods < 0)
         return 2;
 
@@ -139,6 +138,28 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
         free(mlod_lods[i].sharp_edges);
 
         for (j = 0; j < mlod_lods[i].num_selections; j++) {
+            infof(mlod_lods[i].selections[j].name);
+            if (strncmp(mlod_lods[i].selections[j].name, "proxy:", 6) == 0) {
+                char proxy_filename[2048];
+                strcpy(proxy_filename, tempfolder_root);
+                strcat(proxy_filename, (mlod_lods[i].selections[j].name) + 6);
+                if ((strrchr(proxy_filename, '.')) != NULL)
+                    strcpy(strrchr(proxy_filename, '.'), ".p3d");
+                if (!file_exists(proxy_filename)) {
+                    strcpy(strrchr(mlod_lods[i].selections[j].name, '.'), ".p3d");
+                    if (find_file((mlod_lods[i].selections[j].name) + 6, "", proxy_filename, true, false)) {
+                        warningf("Failed to find file %s.\n", (mlod_lods[i].selections[j].name) + 6);
+                        return 1;
+                    }
+                    *(strrchr(proxy_filename, '\\')) = 0;
+                    copy_directory_keep_prefix_path(proxy_filename);
+                    char proxy_temp_filename[2048];
+                    strcpy(proxy_temp_filename, tempfolder_root);
+                    strcat(proxy_temp_filename, (mlod_lods[i].selections[j].name) + 6);
+                    get_p3d_dependencies(proxy_temp_filename, tempfolder_root); // TODO Make filelist of proxies & check them for dependencies
+                }
+
+            }
             free(mlod_lods[i].selections[j].points);
             free(mlod_lods[i].selections[j].faces);
         }
