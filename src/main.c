@@ -41,6 +41,7 @@
 
 
 int main(int argc, char *argv[]) {
+    /*
 #ifdef _WIN32
     // Disable QuickEdit on Console, to prevent user accidentally freezing program
     HANDLE hConsole = GetStdHandle(STD_INPUT_HANDLE);
@@ -49,6 +50,7 @@ int main(int argc, char *argv[]) {
     dwNewMode &= ~ENABLE_QUICK_EDIT_MODE;
     SetConsoleMode(hConsole, dwNewMode | ENABLE_EXTENDED_FLAGS);
 #endif
+*/
 
     extern DocoptArgs args;
     extern char exclude_files[MAXEXCLUDEFILES][512];
@@ -145,7 +147,9 @@ int main(int argc, char *argv[]) {
     if (args.binarize)
         return cmd_binarize();
     if (args.build)
-        return cmd_build();
+        return cmd_build(false);
+    if (args.buildall)
+        return cmd_build(true);
     if (args.inspect)
         return cmd_inspect();
     if (args.unpack)

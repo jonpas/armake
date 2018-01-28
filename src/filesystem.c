@@ -376,8 +376,44 @@ int copy_file(char *source, char *target) {
     mbstowcs(wc_source, source, 2048);
     wchar_t wc_target[2048];
     mbstowcs(wc_target, target, 2048);
-    if (!CopyFile(wc_source, wc_target, 0))
-        return -2;
+
+    bool copy_file = true;
+    
+    if (file_exists(target)) {
+        FILETIME ft_source;
+        FILETIME ft_target;
+        HANDLE  f_file_source = CreateFile(wc_source, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        HANDLE  f_file_target = CreateFile(wc_target, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if ((GetFileTime(f_file_source, NULL, NULL, &ft_source)) && (GetFileTime(f_file_target, NULL, NULL, &ft_target))) {
+            ULARGE_INTEGER ul_source;
+            ul_source.LowPart = ft_source.dwLowDateTime;
+            ul_source.HighPart = ft_source.dwHighDateTime;
+            __int64 fileTime64_source = ul_source.QuadPart;
+
+            ULARGE_INTEGER ul_target;
+            ul_target.LowPart = ft_target.dwLowDateTime;
+            ul_target.HighPart = ft_target.dwHighDateTime;
+            __int64 fileTime64_target = ul_target.QuadPart;
+
+            if (args.force) {
+                if (fileTime64_source == fileTime64_target) {
+                    //infof("Skipping file %s\n.", source);
+                    copy_file = false;
+                }
+            } else {
+                if (fileTime64_source < fileTime64_target) {
+                    //infof("Skipping file %s\n.", source);
+                    copy_file = false;
+                }
+            }
+        }
+        CloseHandle(f_file_source);
+        CloseHandle(f_file_target);
+    }
+
+    if (copy_file)
+        if (!CopyFile(wc_source, wc_target, 0))
+            return -2;
 
 #else
 
@@ -634,6 +670,91 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 }
 
 
+int build_all_callback(char *source_root, char *source, char *target_root) {
+    // Remove trailing path seperators
+    if (source_root[strlen(source_root) - 1] == PATHSEP)
+        source_root[strlen(source_root) - 1] = 0;
+    if (target_root[strlen(target_root) - 1] == PATHSEP)
+        target_root[strlen(target_root) - 1] = 0;
+
+    if (strstr(source, source_root) != source)
+        return -1;
+
+    char filename[1024];
+
+    strcpy(filename, strrchr(source, PATHSEP) + 1);
+
+    if ((!stricmp(filename, "$PBOPREFIX$")) || (!stricmp(filename, "$PBOPREFIX$.txt"))) {
+        // get Temp Root Directory
+        char tempfolder_root[2048];
+        get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+
+        // get addon prefix
+        char addonprefix[512];
+        char directory[2048];
+        strcpy(directory, source);
+        *strrchr(directory, PATHSEP) = 0;
+        get_prefixpath_directory(directory, addonprefix, sizeof(addonprefix));
+
+        infof("Preparing temp folder...\n");
+        char tempfolder[1024];
+        if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
+            errorf("Failed to create temp folder.\n");
+            return 2;
+        }
+
+        char target[2048];
+        strcpy(target, target_root);
+        strcat(target, PATHSEP_STR);
+        strcat(target, (strrchr(directory, PATHSEP) + 1));
+        strcat(target, ".pbo");
+        build(source, tempfolder, addonprefix, tempfolder_root, target); // TODO change target to args.target/directoryname.pbo
+    };
+    return 0;
+}
+
+
+int build_all_copy_callback(char *source_root, char *source, char *target_root) {
+    // Remove trailing path seperators
+    if (source_root[strlen(source_root) - 1] == PATHSEP)
+        source_root[strlen(source_root) - 1] = 0;
+    if (target_root[strlen(target_root) - 1] == PATHSEP)
+        target_root[strlen(target_root) - 1] = 0;
+
+    if (strstr(source, source_root) != source)
+        return -1;
+
+    char filename[1024];
+
+    strcpy(filename, strrchr(source, PATHSEP) + 1);
+
+    if ((!stricmp(filename, "$PBOPREFIX$")) || (!stricmp(filename, "$PBOPREFIX$.txt"))) {
+        // get Temp Root Directory
+        char tempfolder_root[2048];
+        get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+
+        // get addon prefix
+        char addonprefix[512];
+        char directory[2048];
+        strcpy(directory, source);
+        *strrchr(directory, PATHSEP) = 0;
+        get_prefixpath_directory(directory, addonprefix, sizeof(addonprefix));
+
+        infof("Preparing temp folder %s...\n", addonprefix);
+        char tempfolder[1024];
+        if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
+            errorf("Failed to create temp folder.\n");
+            return 2;
+        }
+        if (copy_directory(directory, tempfolder)) {
+            errorf("Failed to copy to temp folder.\n");
+            return 3;
+        }
+    };
+    return 0;
+}
+
+
 int get_prefixpath_directory(char *source, char* addonprefix, size_t addonprefix_size) {
     /*
     * Checks directory for $PBOPREFIX$ or $PBOPREFIX$.txt
@@ -695,7 +816,12 @@ int get_prefixpath_directory(char *source, char* addonprefix, size_t addonprefix
             *(strrchr(pboprefix_folder, PATHSEP)) = 0;
              continue;
         }
-        strncpy(addonprefix, source, addonprefix_size);
+
+        if (strrchr(source, PATHSEP) == NULL)
+            strncpy(addonprefix, source, addonprefix_size);
+        else
+            strncpy(addonprefix, strrchr(source, PATHSEP) + 1, addonprefix_size);
+
         success = -1;
         break;
     }
@@ -814,4 +940,32 @@ int copy_bulk_p3ds_dependencies(char *source, struct build_ignore_data *data) {
     * Gets file dependencies for MLOD p3ds
     */
     return traverse_directory(source, false, copy_bulk_p3ds_dependencies_callback, data);
+}
+
+
+int build_all(char *source, char *target) {
+    /*
+    */
+
+    // Remove trailing path seperators
+    if (source[strlen(source) - 1] == PATHSEP)
+        source[strlen(source) - 1] = 0;
+    if (target[strlen(target) - 1] == PATHSEP)
+        target[strlen(target) - 1] = 0;
+
+    return traverse_directory(source, false, build_all_callback, target);
+}
+
+
+int build_all_copy(char *source, char *target) {
+    /*
+    */
+
+    // Remove trailing path seperators
+    if (source[strlen(source) - 1] == PATHSEP)
+        source[strlen(source) - 1] = 0;
+    if (target[strlen(target) - 1] == PATHSEP)
+        target[strlen(target) - 1] = 0;
+
+    return traverse_directory(source, false, build_all_copy_callback, target);
 }

@@ -72,3 +72,9 @@ int copy_directory(char *source, char *target);
 int copy_directory_keep_prefix_path(char *source);
 
 int copy_includes(char *source, char *target);
+
+int get_prefixpath_directory(char *source, char* addonprefix, size_t addonprefix_size);
+
+int build_all(char *source, char *target);
+
+int build_all_copy(char *source, char *target);

@@ -284,8 +284,7 @@ int hash_file(char *path, unsigned char *hash) {
 }
 
 
-int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tempfolder_size, char *addonprefix, size_t addonprefix_size, char *tempfolder_root) {
-    // preprocess and binarize stuff if required
+int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolder_root, char *target) {
     char nobinpath[1024];
     char notestpath[1024];
     strcpy(nobinpath, prefixpath);
@@ -298,7 +297,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
             current_operation = OP_BUILD;
             strcpy(current_target, args.source);
             errorf("Failed to binarize some files.\n");
-            remove_file(args.target);
+            remove_file(target);
             remove_folder(tempfolder);
             return 4;
         }
@@ -314,7 +313,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
 #else
             if (remove(configpath)) {
 #endif
-                remove_file(args.target);
+                remove_file(target);
                 remove_folder(tempfolder);
                 return 5;
             }
@@ -322,14 +321,14 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
 #ifdef _WIN32
         if (attempt_bis_bulk_binarize(tempfolder)) {
             errorf("Failed to bulk binarize some files.\n");
-            remove_file(args.target);
+            remove_file(target);
             remove_folder(tempfolder);
             return 4;
         }
         infof("Creating texheader.bin ......\n");
         if (attempt_bis_texheader(tempfolder)) {
             errorf("Failed to create texheader.bin.\n");
-            remove_file(args.target);
+            remove_file(target);
             remove_folder(tempfolder);
             return 4;
         }
@@ -343,7 +342,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
     FILE *f_target;
     int i;
     infof("Writing PBO Prefix...\n");
-    f_target = fopen(args.target, "wb");
+    f_target = fopen(target, "wb");
     fwrite("\0sreV\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0prefix\0", 28, 1, f_target);
     // write addonprefix with windows pathseps
     for (i = 0; i <= strlen(addonprefix); i++) {
@@ -357,19 +356,19 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
 
     // write headers to file
     infof("Writing PBO Header...\n");
-    if (traverse_directory(tempfolder, true, write_header_to_pbo, args.target)) {
+    if (traverse_directory(tempfolder, true, write_header_to_pbo, target)) {
         errorf("Failed to write some file header(s) to PBO.\n");
-        remove_file(args.target);
+        remove_file(target);
         remove_folder(tempfolder);
         return 6;
     }
 
     // header boundary
     infof("Writing PBO Header Boundary...\n");
-    f_target = fopen(args.target, "ab");
+    f_target = fopen(target, "ab");
     if (!f_target) {
         errorf("Failed to write header boundary to PBO.\n");
-        remove_file(args.target);
+        remove_file(target);
         remove_folder(tempfolder);
         return 7;
     }
@@ -379,9 +378,9 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
 
     // write contents to file
     infof("Writing PBO Contents...\n");
-    if (traverse_directory(tempfolder, true, write_data_to_pbo, args.target)) {
+    if (traverse_directory(tempfolder, true, write_data_to_pbo, target)) {
         errorf("Failed to pack some file(s) into the PBO.\n");
-        remove_file(args.target);
+        remove_file(target);
         remove_folder(tempfolder);
         return 8;
     }
@@ -389,18 +388,18 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
     // write checksum to file
     infof("Writing PBO Checksum...\n");
     unsigned char checksum[20];
-    hash_file(args.target, checksum);
-    f_target = fopen(args.target, "ab");
+    hash_file(target, checksum);
+    f_target = fopen(target, "ab");
     if (!f_target) {
         errorf("Failed to write checksum to file.\n");
-        remove_file(args.target);
+        remove_file(target);
         remove_folder(tempfolder);
         return 9;
     }
     fputc(0, f_target);
     fwrite(checksum, 20, 1, f_target);
     fclose(f_target);
-    infof("Written PBO %s\n", args.target);
+    infof("Written PBO %s\n", target);
 
     // sign pbo
     if (args.key) {
@@ -419,7 +418,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
             strcpy(keyname, strrchr(args.privatekey, PATHSEP) + 1);
         *strrchr(keyname, '.') = 0;
 
-        strcpy(path_signature, args.target);
+        strcpy(path_signature, target);
         strcat(path_signature, ".");
         strcat(path_signature, keyname);
         strcat(path_signature, ".bisign");
@@ -430,7 +429,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
             return 1;
         }
 
-        if (sign_pbo(args.target, args.privatekey, path_signature)) {
+        if (sign_pbo(target, args.privatekey, path_signature)) {
             errorf("Failed to sign file.\n");
             return 2;
         }
@@ -439,7 +438,7 @@ int build(char *prefixpath, size_t prefixpath_size, char *tempfolder, size_t tem
 }
 
 
-int cmd_build() {
+int cmd_build(bool recursive) {
     extern DocoptArgs args;
     extern int current_operation;
     extern char current_target[2048];
@@ -448,10 +447,11 @@ int cmd_build() {
     current_operation = OP_BUILD;
     strcpy(current_target, args.source);
 
-    // Get Temp Root Directory
-    char tempfolder_root[2048];
-    char target[2048];
-    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+    // remove trailing slash in source
+    if (args.source[strlen(args.source) - 1] == '\\')
+        args.source[strlen(args.source) - 1] = 0;
+    if (args.source[strlen(args.source) - 1] == '/')
+        args.source[strlen(args.source) - 1] = 0;
 
     // check if target already exists
     FILE *f_target;
@@ -459,79 +459,47 @@ int cmd_build() {
         errorf("File %s already exists and --force was not set.\n", args.target);
         return 1;
     }
-
-    // remove trailing slash in source
-    if (args.source[strlen(args.source) - 1] == '\\')
-        args.source[strlen(args.source) - 1] = 0;
-    if (args.source[strlen(args.source) - 1] == '/')
-        args.source[strlen(args.source) - 1] = 0;
-
-    f_target = fopen(args.target, "wb");
-    if (!f_target) {
-        errorf("Failed to open %s.\n", args.target);
-        return 2;
+    if (!args.buildall) {
+        f_target = fopen(args.target, "wb");
+        if (!f_target) {
+            errorf("Failed to open %s.\n", args.target);
+            return 2;
+        }
+        fclose(f_target);
     }
-    fclose(f_target);
+
+
+    // get Temp Root Directory
+    char tempfolder_root[2048];
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+
 
     // get addon prefix
-    char prefixpath[1024];
     char addonprefix[512];
-    FILE *f_prefix;
-    prefixpath[0] = 0;
-    strcat(prefixpath, args.source);
-    strcat(prefixpath, PATHSEP_STR);
-    strcat(prefixpath, "$PBOPREFIX$");
-    f_prefix = fopen(prefixpath, "rb");
-    if (!f_prefix) {
-        if (strrchr(args.source, PATHSEP) == NULL)
-            strncpy(addonprefix, args.source, sizeof(addonprefix));
-        else
-            strncpy(addonprefix, strrchr(args.source, PATHSEP) + 1, sizeof(addonprefix));
-    } else {
-        fgets(addonprefix, sizeof(addonprefix), f_prefix);
-        fclose(f_prefix);
-    }
-    if (addonprefix[strlen(addonprefix) - 1] == '\n')
-        addonprefix[strlen(addonprefix) - 1] = '\0';
-    if (addonprefix[strlen(addonprefix) - 1] == '\r')
-        addonprefix[strlen(addonprefix) - 1] = '\0';
-
-    // replace pathseps on linux
-#ifndef _WIN32
-    char tmp[512] = "";
-    char *p = NULL;
-    for (p = addonprefix; *p; p++) {
-        if (*p == '\\' && tmp[strlen(tmp) - 1] == '/')
-            continue;
-        if (*p == '\\')
-            tmp[strlen(tmp)] = '/';
-        else
-            tmp[strlen(tmp)] = *p;
-        tmp[strlen(tmp) + 1] = 0;
-    }
-    addonprefix[0] = 0;
-    strcat(addonprefix, tmp);
-#endif
-
-    // create and prepare temp folder
-    infof("Preparing temp folder...\n");
     char tempfolder[1024];
-    if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
-        errorf("Failed to create temp folder.\n");
-        remove_file(args.target);
-        return 2;
+    get_prefixpath_directory(args.source, addonprefix, sizeof(addonprefix));
+
+    if (recursive) {
+        build_all_copy(args.source, args.target);
     }
-    if (copy_directory(args.source, tempfolder)) {
-        errorf("Failed to copy to temp folder.\n");
-        remove_file(args.target);
-        remove_folder(tempfolder);
-        return 3;
+    else {
+        // create and prepare temp folder
+        infof("Preparing temp folder...\n");
+        if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
+            errorf("Failed to create temp folder.\n");
+            remove_file(args.target);
+            return 2;
+        }
+        if (copy_directory(args.source, tempfolder)) {
+            errorf("Failed to copy to temp folder.\n");
+            remove_file(args.target);
+            remove_folder(tempfolder);
+            return 3;
+        }
     }
 
+ 
     if (args.includeforce > 0) {
-        strcpy(target, tempfolder);
-        if (target[strlen(target) - 1] != PATHSEP)
-            strcat(target, PATHSEP_STR);
         for (i = 0; i < MAXINCLUDEFOLDERS && includeforce_folders[i][0] != 0; i++) {
             if (copy_directory_keep_prefix_path(includeforce_folders[i]))
                 errorf("Failed to copy %s to temp folder.\n", includeforce_folders[i]);
@@ -546,7 +514,13 @@ int cmd_build() {
     }
 #endif
 
-    int success = build(prefixpath, sizeof(prefixpath), tempfolder, sizeof(tempfolder), addonprefix, sizeof(addonprefix), tempfolder_root);
+    int success;
+    if (recursive) {
+        success = build_all(args.source, args.target);
+    } else {
+        success = build(args.source, tempfolder, addonprefix, tempfolder_root, args.target);
+    }
+
     if (success != 0) {
         return success;
     }

@@ -18,6 +18,9 @@
 
 #pragma once
 
+#include <stdbool.h>
+
+
 struct filelist {
     char filename[2048];
     struct filelist *next;
@@ -34,4 +37,6 @@ void build_add_ignore(char *filename, struct build_ignore_data *data);
 void build_revert_ignores(struct build_ignore_data *data);
 #endif
 
-int cmd_build();
+int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolder_root, char *target);
+
+int cmd_build(bool recursive);

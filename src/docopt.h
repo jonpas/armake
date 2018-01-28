@@ -41,6 +41,7 @@ typedef struct {
     /* commands */
     int binarize;
     int build;
+    int buildall;
     int cat;
     int derapify;
     int img2paa;

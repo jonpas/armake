@@ -40,9 +40,11 @@ const char help_message[] =
 #ifdef _WIN32
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake buildall [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #else
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake buildall [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #endif
 "    armake inspect <target>\n"
 "    armake unpack [-f] [-i <includepattern>] [-x <excludepattern>] <source> <target>\n"
@@ -58,6 +60,7 @@ const char help_message[] =
 "Commands:\n"
 "    binarize    Binarize a file.\n"
 "    build       Pack a folder into a PBO.\n"
+"    buildall    Recursive scan a directory packing each pboprefix into a pbo into dest directory.\n"
 "    inspect     Inspect a PBO and list contained files.\n"
 "    unpack      Unpack a PBO into a folder.\n"
 "    cat         Read the named file from the target PBO to stdout.\n"
@@ -107,9 +110,11 @@ const char usage_pattern[] =
 #ifdef _WIN32
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake buildall [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #else
 "    armake binarize [-f] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] <source> <target>\n"
 "    armake build [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
+"    armake buildall [-f] [-p] [-w <wname>] [-i <includefolder>] [-I <includeforcefolder>] [-T <tempfolder>] [-x <xlist>] [-k <privatekey>] <source> <target>\n"
 #endif
 "    armake inspect <target>\n"
 "    armake unpack [-f] [-i <includepattern>] [-x <excludepattern>] <source> <target>\n"
@@ -344,6 +349,8 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->binarize = command->value;
         } else if (!strcmp(command->name, "build")) {
             args->build = command->value;
+        } else if (!strcmp(command->name, "buildall")) {
+            args->buildall = command->value;
         } else if (!strcmp(command->name, "cat")) {
             args->cat = command->value;
         } else if (!strcmp(command->name, "derapify")) {
@@ -401,7 +408,7 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
 
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     DocoptArgs args = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         usage_pattern, help_message
@@ -410,6 +417,7 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     Command commands[] = {
         {"binarize", 0},
         {"build", 0},
+        {"buildall", 0 },
         {"cat", 0},
         {"derapify", 0},
         {"img2paa", 0},
@@ -449,7 +457,7 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-v", "--version", 0, 0, NULL},
         {"-w", "--warning", 0, 0, NULL}
     };
-    Elements elements = {10, 13, 13, commands, arguments, options};
+    Elements elements = {11, 13, 13, commands, arguments, options};
 
     ts = tokens_new(argc, argv);
     if (parse_args(&ts, &elements))
