@@ -490,7 +490,7 @@ int get_skeleton(char *skeleton_cfg, char *rtm, char *skeleton) {
 
     if (!f_skeleton_cfg) {
         strcpy(skeleton, "OFP2_ManSkeleton");
-        nwarningf("binarize-rtm-configfile", "Couldn't find %s, using default skeleton.\n", skeleton_cfg);
+        nwarningf("binarize-rtm-configfile", "%s couldn't find rtms.armake, using default skeleton.\n", rtm);
         return -2;
     };
     char buffer[2048];
