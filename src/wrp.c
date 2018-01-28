@@ -158,19 +158,20 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
     short materialindex, materiallength;
     unsigned long dObjIndex;
 
+    debugf("Scanning 8WVR");
     fread(&texturegrid, 4, 1, wrp_map);
-    printf("texture grid x: %d\n", texturegrid);
+    debugf("texture grid x: %d\n", texturegrid);
     fread(&texturegrid, 4, 1, wrp_map);
-    printf("texture grid z: %d\n", texturegrid);
+    debugf("texture grid z: %d\n", texturegrid);
 
     fread(&terraingrid, 4, 1, wrp_map);
-    printf("terrain grid x: %d\n", terraingrid);
+    debugf("terrain grid x: %d\n", terraingrid);
     fread(&terraingrid, 4, 1, wrp_map);
-    printf("terrain grid z: %d\n", terraingrid);
+    debugf("terrain grid z: %d\n", terraingrid);
 
     // cell size, but how many digits??
     fread(&cellsize, 4, 1, wrp_map);
-    printf("Cellsize: %f\n", cellsize);
+    debugf("Cellsize: %f\n", cellsize);
 
     // reading elevations
     for (int i = 0; i < terraingrid * terraingrid; i++)
@@ -189,11 +190,11 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
 
     // noofmaterials
     fread(&noofmaterials, 4, 1, wrp_map);
-    printf("noofmaterials: %ld\n", noofmaterials);
+    debugf("noofmaterials: %ld\n", noofmaterials);
 
     // reading the first NULL material...
     fread(&materiallength, 4, 1, wrp_map);
-    printf("1st NULL materiallength: %d\n", materiallength);
+    debugf("1st NULL materiallength: %d\n", materiallength);
 
     //////////// now, insert  the following
     noofmaterials--; // remove that 1st one. from the count
@@ -203,7 +204,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         fread(&materiallength, 4, 1, wrp_map);
         if (!materiallength)
         {
-            printf("%ld materiallength has no count\n", noofmaterials);
+            debugf("%ld materiallength has no count\n", noofmaterials);
             return -1;
         }
         fread(&buffer, materiallength, 1, wrp_map);
@@ -211,7 +212,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         fread(&materiallength, 4, 1, wrp_map);
         if (materiallength)
         {
-            printf("%ld 2nd materiallength should be zero\n", noofmaterials);
+            debugf("%ld 2nd materiallength should be zero\n", noofmaterials);
             return -1;
         }
         else {
@@ -221,8 +222,9 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
 
     // Start reading objects...
 
-    printf ("Reading 3d objects...");
+    debugf("Reading 3d objects...");
 
+    int i = 0;
     for(;;)
     {
         fread(&dDir, sizeof(float), 3*4, wrp_map);
@@ -234,11 +236,12 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         fread(dObjName,sizeof(char),len, wrp_map);
         dObjName[len] = 0;
         wrp_add_dependency(dObjName, tempfolder_root);
+        i++;
     }
     // should now be at eof
-    //printf(" Done\nNumber of P3D objects: %ld\n", dObjIndex);
+    //debugf(" Done\nNumber of P3D objects: %ld\n", i);
 
-    printf ("All fine, 8WVR file read, exiting. Have a nice day!\n");
+    debugf("All fine, 8WVR file read, exiting. Have a nice day!\n");
     return 0;
 }
 
@@ -306,7 +309,7 @@ int wrp_parse(char *source, char *tempfolder_root) {
 
     wrp_map = fopen(source, "rb");
     if (!wrp_map) {
-        //TODO ERROR
+        errorf("Unable to open wrp file: %s", source);
         return -1;
     }
 
