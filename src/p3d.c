@@ -193,7 +193,11 @@ int read_lods(FILE *f_source, struct mlod_lod *mlod_lods, uint32_t num_lods) {
                         break;
                 }
 
-                strcpy(mlod_lods[i].selections[j].name, buffer);
+                // Proxies Direct Path
+                mlod_lods[i].selections[j].name[0] = 0;
+                if ((strncmp(buffer, "proxy:", 6) == 0) && (strncmp(buffer, "proxy://", 7) != 0))
+                    strcat(mlod_lods[i].selections[j].name, "\\");
+                strcat(mlod_lods[i].selections[j].name, buffer);
 
                 if (empty) {
                     mlod_lods[i].selections[j].points = (uint8_t *)malloc(1);
