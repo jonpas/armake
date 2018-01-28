@@ -310,7 +310,7 @@ void parse_class_dependencies(struct class *result, struct filelist **files)
     struct filelist *files_ptr;
     files_ptr = *files;
     while (tmp != NULL) {
-        if (tmp->type == TYPE_VAR && ((struct class *)(tmp->content))->content != NULL) {
+        if (tmp->type == TYPE_VAR && ((struct variable *)(tmp->content) != NULL)) {
             config_variable = (struct variable *)(tmp->content);
             if ((stricmp(config_variable->name, "texture") == 0) || (stricmp(config_variable->name, "surfaceInfo")) == 0) {
                 if ((config_variable->expression->type) == TYPE_STRING) {
