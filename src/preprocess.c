@@ -783,12 +783,14 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                     continue;
                 fprintf(stderr, "        %s\n", include_stack[j]);
             }
+            fclose(f_source);
             return 1;
         }
     }
 
     if (i == MAXINCLUDES) {
         errorf("Too many nested includes.\n");
+        fclose(f_source);
         return 1;
     }
 
@@ -953,11 +955,13 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                 strncpy(includepath, strchr(directive_args, '"') + 1, sizeof(includepath));
                 if (strchr(includepath, '"') == NULL) {
                     lerrorf(source, line, "Failed to parse #include.\n");
+                    fclose(f_source);
                     return 6;
                 }
                 *strchr(includepath, '"') = 0;
-                if (find_file(includepath, source, actualpath, false, false)) {
+                if (find_file(includepath, source, actualpath, true, false)) {
                     lerrorf(source, line, "Failed to find %s.\n", includepath);
+                    fclose(f_source);
                     return 7;
                 }
 
@@ -972,12 +976,15 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                 current_operation = OP_PREPROCESS;
                 strcpy(current_target, source);
 
-                if (success)
+                if (success) {
+                    fclose(f_source);
                     return success;
+                }
                 continue;
             } else if (strcmp(directive, "define") == 0) {
                 if (!constants_parse(constants, directive_args, line)) {
                     lerrorf(source, line, "Failed to parse macro definition.\n");
+                    fclose(f_source);
                     return 3;
                 }
             } else if (strcmp(directive, "undef") == 0) {
@@ -998,6 +1005,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
             } else if (strcmp(directive, "endif") == 0) {
                if (level == 0) {
                    lerrorf(source, line, "Unexpected #endif.\n");
+                   fclose(f_source);
                    return 4;
                }
                if (level == level_true)
@@ -1005,6 +1013,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                level--;
             } else {
                 lerrorf(source, line, "Unknown preprocessor directive \"%s\".\n", directive);
+                fclose(f_source);
                 return 5;
             }
 
@@ -1013,6 +1022,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
             buffer = constants_preprocess(constants, buffer, line);
             if (buffer == NULL) {
                 lerrorf(source, line, "Failed to resolve macros.\n");
+                fclose(f_source);
                 return success;
             }
 
