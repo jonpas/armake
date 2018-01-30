@@ -36,12 +36,15 @@
 #define wcslens(s) (s==NULL?0:wcslen(s))
 #endif
 
+typedef intptr_t ssize_t;
 
-#ifdef _WIN32
+
 bool file_exists(char *path);
 bool file_exists_fuzzy(char *path);
+
+#ifdef _WIN32
 bool wc_file_exists(wchar_t *wc_path);
-size_t getline(char **lineptr, size_t *n, FILE *stream);
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 
 int copy_bulk_p3ds_dependencies(char *source, struct build_ignore_data *data);
 #endif

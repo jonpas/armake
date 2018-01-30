@@ -491,7 +491,7 @@ int cmd_build(bool recursive) {
             return 2;
         }
         if (copy_directory(args.source, tempfolder)) {
-            errorf("Failed to copy to temp folder.\n");
+            errorf("Failed to copy %s to temp folder.\n", args.source);
             remove_file(args.target);
             remove_folder(tempfolder);
             return 3;

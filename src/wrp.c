@@ -224,7 +224,6 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
 
     debugf("Reading 3d objects...");
 
-    int i = 0;
     for(;;)
     {
         fread(&dDir, sizeof(float), 3*4, wrp_map);
@@ -236,7 +235,6 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         fread(dObjName,sizeof(char),len, wrp_map);
         dObjName[len] = 0;
         wrp_add_dependency(dObjName, tempfolder_root);
-        i++;
     }
     // should now be at eof
     //debugf(" Done\nNumber of P3D objects: %ld\n", i);
@@ -304,7 +302,7 @@ int wrp_parse_4WVR(FILE *wrp_map, char *tempfolder_root) {
 
 int wrp_parse(char *source, char *tempfolder_root) {
     FILE *wrp_map;
-    int ret;
+    int ret = -1;
     char sig[33];
 
     wrp_map = fopen(source, "rb");

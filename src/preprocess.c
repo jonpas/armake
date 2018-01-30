@@ -140,7 +140,6 @@ bool constants_parse(struct constants *constants, char *definition, int line) {
 
                 while (*ptr == '#' && *(ptr + 1) == '#')
                     ptr += 2;
-
                 if (*ptr == '#') {
                     lerrorf(current_target, line,
                             "Token concatenations cannot be stringized.\n");
@@ -418,7 +417,25 @@ char *constant_value(struct constants *constants, struct constant *constant,
             result = (char *)realloc(result, strlen(result) + strlen(tmp) + strlen(args[constant->occurrences[i][0]]) + 1);
             strcat(result, tmp);
             free(tmp);
-            strcat(result, args[constant->occurrences[i][0]]);
+            char *ptr2 = result;
+            bool instring = false;
+            while (*ptr2)
+            {
+                if (ptr2[0] == '\"')
+                    instring = !instring;
+                *ptr2++;
+            }
+            if (!instring) {
+                strcat(result, args[constant->occurrences[i][0]]);
+            } else {
+                size_t args_len = strlens(args[constant->occurrences[i][0]]);
+                if ((args[constant->occurrences[i][0]][0] == '\"') && (args[constant->occurrences[i][0]][args_len-1] == '\"')) {
+                    strcat(result, args[constant->occurrences[i][0]]+1);
+                    result[strlens(result) - 1] = 0;
+                } else {
+                    strcat(result, args[constant->occurrences[i][0]]);
+                }
+            }
             ptr = constant->value + constant->occurrences[i][1];
         }
         result = (char *)realloc(result, strlen(result) + strlen(ptr) + 1);
@@ -525,21 +542,18 @@ bool matches_includepath(char *path, char *includepath, char *includefolder, boo
      */
 
     char prefixedpath[2048];
-
     get_prefixpath(path, includefolder, prefixedpath, 2048);
-    if (prefixedpath != NULL) {
-        // compensate for missing leading slash in PBOPREFIX
-        if (case_insensitive) {
-            if (prefixedpath[0] != '\\')
-                return (stricmp(prefixedpath, includepath + 1) == 0);
-            else
-                return (stricmp(prefixedpath, includepath) == 0);
-        } else {
-            if (prefixedpath[0] != '\\')
-                return (strcmp(prefixedpath, includepath + 1) == 0);
-            else
-                return (strcmp(prefixedpath, includepath) == 0);
-        }
+    // compensate for missing leading slash in PBOPREFIX
+    if (case_insensitive) {
+        if (prefixedpath[0] != '\\')
+            return (stricmp(prefixedpath, includepath + 1) == 0);
+        else
+            return (stricmp(prefixedpath, includepath) == 0);
+    } else {
+        if (prefixedpath[0] != '\\')
+            return (strcmp(prefixedpath, includepath + 1) == 0);
+        else
+            return (strcmp(prefixedpath, includepath) == 0);
     }
 
     return false;
@@ -595,7 +609,7 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
     *alternative_filename = 0;
     *alternative_includepath = 0;
     if (fuzzy_filename) {
-        if (!stricmp(strrchr(filename, '.'), ".tga")) {
+        if ((strrchr(filename, '.') != NULL) && (!stricmp(strrchr(filename, '.'), ".tga"))) {
             strncpy(alternative_filename, filename, 2048);
             strcpy(strchr(alternative_filename, '.'), ".paa");
             strncpy(alternative_includepath, includepath, 2048);
@@ -684,7 +698,7 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
             case FTS_DC: continue;
         }
 
-        if (strcmp(filename, f->fts_name) == 0 && matches_includepath(f->fts_path, includepath, includefolder)) {
+        if (strcmp(filename, f->fts_name) == 0 && matches_includepath(f->fts_path, includepath, includefolder, true)) {
             strncpy(actualpath, f->fts_path, 2048);
             fts_close(tree);
             return 0;
@@ -783,14 +797,12 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                     continue;
                 fprintf(stderr, "        %s\n", include_stack[j]);
             }
-            fclose(f_source);
             return 1;
         }
     }
 
     if (i == MAXINCLUDES) {
         errorf("Too many nested includes.\n");
-        fclose(f_source);
         return 1;
     }
 
@@ -858,6 +870,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                 buffer = (char *)realloc(buffer, strlen(buffer) + 2 + buffsize);
                 strcpy(buffer + strlen(buffer) - 2, ptr);
                 free(ptr);
+                ptr = NULL;
             }
 
             // Add trailing new line if necessary
@@ -910,13 +923,14 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
         }
 
         // trim leading spaces
-        trim_leading(buffer, strlen(buffer) + 1);
+        trim_leading(buffer, strlens(buffer)+1);
 
         // skip lines inside untrue ifs
         if (level > level_true) {
             if ((strlen(buffer) < 5 || strncmp(buffer, "#else", 5) != 0) &&
                     (strlen(buffer) < 6 || strncmp(buffer, "#endif", 6) != 0)) {
                 free(buffer);
+                buffer = NULL;
                 continue;
             }
         }
@@ -966,7 +980,9 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                 }
 
                 free(directive);
+                directive = NULL;
                 free(buffer);
+                buffer = NULL;
 
                 success = preprocess(actualpath, f_target, constants, lineref);
 
@@ -1039,6 +1055,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
         }
 
         free(buffer);
+        buffer = NULL;
     }
 
     fclose(f_source);

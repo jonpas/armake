@@ -46,27 +46,35 @@
 #include "unistdwrapper.h"
 
 
-#ifdef _WIN32
+
 bool file_exists(char *path) {
-    wchar_t *wc_path = malloc(sizeof(*wc_path) * (strlen(path) + 1));
-    mbstowcs(wc_path, path, (strlen(path) + 1));
+#ifdef _WIN32
+    size_t len = (strlens(path) + 1);
+    wchar_t *wc_path = malloc(sizeof(*wc_path) * len);
+    mbstowcs(wc_path, path, len);
     unsigned long attrs = GetFileAttributes(wc_path);
-    free (wc_path);
+    free(wc_path);
     return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+#else
+    return (access(path, F_OK) != -1);
+#endif
 }
 
 bool file_exists_fuzzy(char *path) {
-    wchar_t *wc_path = malloc(sizeof(*wc_path) * (strlen(path) + 1));
-    mbstowcs(wc_path, path, (strlen(path) + 1));
+#ifdef _WIN32
+    size_t len = (strlens(path) + 1);
+    wchar_t *wc_path = malloc(sizeof(*wc_path) * len);
+    mbstowcs(wc_path, path, len);
     unsigned long attrs = GetFileAttributes(wc_path);
 
     int status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
     if (!status) {
         if ((!stricmp(strrchr(path, '.'), ".tga")) || (!stricmp(strrchr(path, '.'), ".png"))) {
-            char alternative_path[2048];
-            strncpy(alternative_path, path, sizeof(alternative_path));
+            char *alternative_path = malloc(sizeof(*alternative_path) * len);
+            strncpy(alternative_path, path, len);
             strcpy(strchr(alternative_path, '.'), ".paa");
-            mbstowcs(wc_path, alternative_path, (strlen(alternative_path) + 1));
+            mbstowcs(wc_path, alternative_path, len);
+            free(alternative_path);
             attrs = GetFileAttributes(wc_path);
             status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
         }
@@ -74,62 +82,64 @@ bool file_exists_fuzzy(char *path) {
 
     free(wc_path);
     return status;
+#else
+    return (access(path, F_OK) != -1);
+#endif
 }
 
+#ifdef _WIN32
 bool wc_file_exists(wchar_t *wc_path) {
     unsigned long attrs = GetFileAttributes(wc_path);
     return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-size_t getline(char **lineptr, size_t *n, FILE *stream) {
-    char *bufptr = NULL;
-    char *p = bufptr;
-    size_t size;
+// https://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/47229318#47229318
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+    size_t pos;
     int c;
 
-    if (lineptr == NULL)
+    if (lineptr == NULL || stream == NULL || n == NULL) {
+        errno = EINVAL;
         return -1;
-    if (stream == NULL)
-        return -1;
-    if (n == NULL)
-        return -1;
-
-    bufptr = *lineptr;
-    size = *n;
+    }
 
     c = fgetc(stream);
-    if (c == EOF)
+    if (c == EOF) {
         return -1;
-
-    if (bufptr == NULL) {
-        bufptr = malloc(128);
-        if (bufptr == NULL)
-            return -1;
-        size = 128;
     }
-    p = bufptr;
-    while(c != EOF) {
-        if ((p - bufptr) > (size - 1)) {
-            size = size + 128;
-            bufptr = realloc(bufptr, size);
-            p = bufptr + size - 128;
-            if (bufptr == NULL)
+
+    if (*lineptr == NULL) {
+        *lineptr = malloc(128);
+        if (*lineptr == NULL) {
+            return -1;
+        }
+        *n = 128;
+    }
+
+    pos = 0;
+    while (c != EOF) {
+        if (pos + 1 >= *n) {
+            size_t new_size = *n + (*n >> 2);
+            if (new_size < 128) {
+                new_size = 128;
+            }
+            char *new_ptr = realloc(*lineptr, new_size);
+            if (new_ptr == NULL) {
                 return -1;
+            }
+            *n = new_size;
+            *lineptr = new_ptr;
         }
 
-        *p++ = c;
-
-        if (c == '\n')
+        (*lineptr)[pos++] = c;
+        if (c == '\n') {
             break;
-
+        }
         c = fgetc(stream);
     }
 
-    *p++ = '\0';
-    *lineptr = bufptr;
-    *n = size;
-
-    return p - bufptr - 1;
+    (*lineptr)[pos] = '\0';
+    return pos - 1;
 }
 #endif
 
@@ -151,7 +161,7 @@ void get_temp_path(char *path, size_t bufsize) {
         }
         // TODO Add command switch to remove old directories, windows apparently doesn't remove temp files at startup.
 #else
-        strncpy(path, LINUX_TEMPPATH, bufsize);
+        strncpy(path, TEMPPATH, bufsize);
         sprintf(path, "%s/armake/%ld/", path, getpid());
 #endif
     } else {
@@ -165,7 +175,7 @@ void get_temp_path(char *path, size_t bufsize) {
 
 int get_temp_name(char *target, char *suffix) {
 #ifdef _WIN32
-    wchar_t *wc_target = malloc(sizeof(*target) * (strlen(target) + 1));
+    wchar_t *wc_target = malloc(sizeof(*wc_target) * (strlen(target) + 1));
     mbstowcs(wc_target, target, 2048);
     if (!GetTempFileName(L".", L"amk", 0, wc_target)) { return 1; }
     wcstombs(target, wc_target, (strlen(target) + 1));
@@ -570,7 +580,7 @@ int traverse_directory_recursive(char *root, char *cwd, bool *avoid_other_pbopre
         stat(next, &st);
 
         if (S_ISDIR(st.st_mode))
-            success = traverse_directory_recursive(root, next, callback, third_arg);
+            success = traverse_directory_recursive(root, next, avoid_other_pboprefixes, callback, third_arg);
         else
             success = callback(root, next, third_arg);
 
@@ -708,7 +718,7 @@ int build_all_callback(char *source_root, char *source, char *target_root) {
         strcat(target, PATHSEP_STR);
         strcat(target, (strrchr(directory, PATHSEP) + 1));
         strcat(target, ".pbo");
-        build(source, tempfolder, addonprefix, tempfolder_root, target); // TODO change target to args.target/directoryname.pbo
+        return build(source, tempfolder, addonprefix, tempfolder_root, target); // TODO change target to args.target/directoryname.pbo
     };
     return 0;
 }
@@ -910,17 +920,17 @@ int copy_includes(char *source, char *target) {
 }
 
 
+#ifdef _WIN32
 int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, struct build_ignore_data *data) {
     char *ext = strrchr(source, '.');
     if (ext != NULL) {
         if (!stricmp(ext, ".p3d")) {
+            progressf();
             if (is_mlod(source) == 0) {
-                progressf();
                 int ret = get_p3d_dependencies(source, data->tempfolder_root);
                 if (ret > 0)
                     return ret;
             } else {
-                progressf();
                 build_add_ignore(source, data);
                 return 0;
             }
@@ -941,6 +951,7 @@ int copy_bulk_p3ds_dependencies(char *source, struct build_ignore_data *data) {
     */
     return traverse_directory(source, false, copy_bulk_p3ds_dependencies_callback, data);
 }
+#endif
 
 
 int build_all(char *source, char *target) {

@@ -71,149 +71,6 @@ int check_bis_binarize() {
 }
 
 
-int get_p3d_dependencies(char *source, char *tempfolder_root) {
-    /*
-    * Copies p3d depenencies to tempfolder location
-    * i.e if p3d is using textures/rvmats from a3/  need to copy this into temp folder for BI binarize
-    */
-    char temp[2048];
-    char filename[2048];
-    char *dependencies[MAXTEXTURES];
-    FILE *f_source;
-    struct mlod_lod *mlod_lods;
-
-    int32_t num_lods;
-    int i;
-    int j;
-    int k;
-
-    // Read P3D and create a list of required files
-    f_source = fopen(source, "rb");
-    if (!f_source)
-        return 1;
-
-
-    fseek(f_source, 8, SEEK_SET);
-    fread(&num_lods, 4, 1, f_source);
-    mlod_lods = (struct mlod_lod *)malloc(sizeof(struct mlod_lod) * num_lods);
-    num_lods = read_lods(f_source, mlod_lods, num_lods);
-    if (num_lods < 0)
-        return 2;
-
-    fclose(f_source);
-
-    memset(dependencies, 0, MAXTEXTURES * 2);
-    for (i = 0; i < num_lods; i++) {
-        for (j = 0; j < mlod_lods[i].num_faces; j++) {
-            if (strlen(mlod_lods[i].faces[j].texture_name) > 0 && mlod_lods[i].faces[j].texture_name[0] != '#') {
-                for (k = 0; k < MAXTEXTURES; k++) {
-                    if (dependencies[k] == 0)
-                        break;
-                    if (stricmp(mlod_lods[i].faces[j].texture_name, dependencies[k]) == 0)
-                        break;
-                }
-                if (k < MAXTEXTURES && dependencies[k] == 0) {
-                    dependencies[k] = (char *)malloc(2048);
-                    strcpy(dependencies[k], mlod_lods[i].faces[j].texture_name);
-                }
-            }
-            if (strlen(mlod_lods[i].faces[j].material_name) > 0 && mlod_lods[i].faces[j].material_name[0] != '#') {
-                for (k = 0; k < MAXTEXTURES; k++) {
-                    if (dependencies[k] == 0)
-                        break;
-                    if (stricmp(mlod_lods[i].faces[j].material_name, dependencies[k]) == 0)
-                        break;
-                }
-                if (k < MAXTEXTURES && dependencies[k] == 0) {
-                    dependencies[k] = (char *)malloc(2048);
-                    strcpy(dependencies[k], mlod_lods[i].faces[j].material_name);
-                }
-            }
-        }
-
-        free(mlod_lods[i].points);
-        free(mlod_lods[i].facenormals);
-        free(mlod_lods[i].faces);
-        free(mlod_lods[i].mass);
-        free(mlod_lods[i].sharp_edges);
-
-        for (j = 0; j < mlod_lods[i].num_selections; j++) {
-            if (strncmp(mlod_lods[i].selections[j].name, "proxy:", 6) == 0) {
-                char proxy_filename[2048];
-                strcpy(proxy_filename, tempfolder_root);
-                strcat(proxy_filename, (mlod_lods[i].selections[j].name) + 6);
-                if ((strrchr(proxy_filename, '.')) != NULL)
-                    strcpy(strrchr(proxy_filename, '.'), ".p3d");
-                if (!file_exists(proxy_filename)) {
-                    strcpy(strrchr(mlod_lods[i].selections[j].name, '.'), ".p3d");
-                    if (find_file((mlod_lods[i].selections[j].name) + 6, "", proxy_filename, true, false)) {
-                        warningf("Failed to find file %s.\n", (mlod_lods[i].selections[j].name) + 6);
-                        return 1;
-                    }
-                    *(strrchr(proxy_filename, '\\')) = 0;
-                    copy_directory_keep_prefix_path(proxy_filename);
-                    char proxy_temp_filename[2048];
-                    strcpy(proxy_temp_filename, tempfolder_root);
-                    strcat(proxy_temp_filename, (mlod_lods[i].selections[j].name) + 6);
-                    get_p3d_dependencies(proxy_temp_filename, tempfolder_root); // TODO Optimize???
-                }
-
-            }
-            free(mlod_lods[i].selections[j].points);
-            free(mlod_lods[i].selections[j].faces);
-        }
-
-        free(mlod_lods[i].selections);
-    }
-    free(mlod_lods);
-
-    for (i = 0; i < MAXTEXTURES; i++) {
-        if (dependencies[i] == 0)
-            break;
-
-        strcpy(filename, tempfolder_root);
-        strcat(filename, PATHSEP_STR);
-
-        if (dependencies[i][0] != '\\') {
-            strcat(filename, dependencies[i]);
-        } else {
-            strcat(filename, dependencies[i] + 1);
-        }
-
-        if (!file_exists_fuzzy(filename)) {
-            *filename = 0;
-            *temp = 0;
-            if (dependencies[i][0] != '\\')
-                strcpy(filename, "\\");
-            strcat(filename, dependencies[i]);
-
-            if (find_file(filename, "", temp, true, true)) {
-                warningf("Failed to find file %s.\n", filename);
-                continue;
-            } else {
-                strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.'));
-            }
-
-            strcpy(filename, tempfolder_root);
-            strcat(filename, PATHSEP_STR);
-            strcat(filename, dependencies[i]);
-
-            if (copy_file(temp, filename)) {
-                errorf("Failed to copy %s to temp folder %s.\n", temp, filename);
-                return 3;
-            }
-        }
-        char *ext = strrchr(filename, '.');
-        if ((ext != NULL) && (stricmp(ext, ".rvmat") == 0))
-            rapify_file_get_files(filename, filename, tempfolder_root);
-
-
-        free(dependencies[i]);
-    }
-    return 0;
-}
-
-
 int attempt_bis_binarize(char *source, char *target) {
     /*
      * Attempts to use the BI binarize.exe for binarization. If the
@@ -850,6 +707,151 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
 #endif
 
 
+int get_p3d_dependencies(char *source, char *tempfolder_root) {
+    /*
+    * Copies p3d depenencies to tempfolder location
+    * i.e if p3d is using textures/rvmats from a3/  need to copy this into temp folder for BI binarize
+    */
+    char temp[2048];
+    char filename[2048];
+    char *dependencies[MAXTEXTURES];
+    FILE *f_source;
+    struct mlod_lod *mlod_lods;
+
+    int32_t num_lods;
+    int i;
+    int j;
+    int k;
+
+    // Read P3D and create a list of required files
+    f_source = fopen(source, "rb");
+    if (!f_source)
+        return 1;
+
+
+    fseek(f_source, 8, SEEK_SET);
+    fread(&num_lods, 4, 1, f_source);
+    mlod_lods = (struct mlod_lod *)malloc(sizeof(struct mlod_lod) * num_lods);
+    num_lods = read_lods(f_source, mlod_lods, num_lods);
+    if (num_lods < 0)
+        return 2;
+
+    fclose(f_source);
+
+    memset(dependencies, 0, MAXTEXTURES * 2);
+    for (i = 0; i < num_lods; i++) {
+        for (j = 0; j < mlod_lods[i].num_faces; j++) {
+            if (strlen(mlod_lods[i].faces[j].texture_name) > 0 && mlod_lods[i].faces[j].texture_name[0] != '#') {
+                for (k = 0; k < MAXTEXTURES; k++) {
+                    if (dependencies[k] == 0)
+                        break;
+                    if (stricmp(mlod_lods[i].faces[j].texture_name, dependencies[k]) == 0)
+                        break;
+                }
+                if (k < MAXTEXTURES && dependencies[k] == 0) {
+                    dependencies[k] = (char *)malloc(2048);
+                    strcpy(dependencies[k], mlod_lods[i].faces[j].texture_name);
+                }
+            }
+            if (strlen(mlod_lods[i].faces[j].material_name) > 0 && mlod_lods[i].faces[j].material_name[0] != '#') {
+                for (k = 0; k < MAXTEXTURES; k++) {
+                    if (dependencies[k] == 0)
+                        break;
+                    if (stricmp(mlod_lods[i].faces[j].material_name, dependencies[k]) == 0)
+                        break;
+                }
+                if (k < MAXTEXTURES && dependencies[k] == 0) {
+                    dependencies[k] = (char *)malloc(2048);
+                    strcpy(dependencies[k], mlod_lods[i].faces[j].material_name);
+                }
+            }
+        }
+
+        free(mlod_lods[i].points);
+        free(mlod_lods[i].facenormals);
+        free(mlod_lods[i].faces);
+        free(mlod_lods[i].mass);
+        free(mlod_lods[i].sharp_edges);
+
+        for (j = 0; j < mlod_lods[i].num_selections; j++) {
+            if (strncmp(mlod_lods[i].selections[j].name, "proxy:", 6) == 0) {
+                char proxy_filename[2048];
+                strcpy(proxy_filename, tempfolder_root);
+                strcat(proxy_filename, (mlod_lods[i].selections[j].name) + 6);
+                if ((strrchr(proxy_filename, '.')) != NULL)
+                    strcpy(strrchr(proxy_filename, '.'), ".p3d");
+                if (!file_exists(proxy_filename)) {
+                    strcpy(strrchr(mlod_lods[i].selections[j].name, '.'), ".p3d");
+                    if (find_file((mlod_lods[i].selections[j].name) + 6, "", proxy_filename, true, false)) {
+                        warningf("Failed to find file %s.\n", (mlod_lods[i].selections[j].name) + 6);
+                        return 1;
+                    }
+                    *(strrchr(proxy_filename, '\\')) = 0;
+                    copy_directory_keep_prefix_path(proxy_filename);
+                    char proxy_temp_filename[2048];
+                    strcpy(proxy_temp_filename, tempfolder_root);
+                    strcat(proxy_temp_filename, (mlod_lods[i].selections[j].name) + 6);
+                    get_p3d_dependencies(proxy_temp_filename, tempfolder_root); // TODO Optimize???
+                }
+
+            }
+            free(mlod_lods[i].selections[j].points);
+            free(mlod_lods[i].selections[j].faces);
+        }
+
+        free(mlod_lods[i].selections);
+    }
+    free(mlod_lods);
+
+    for (i = 0; i < MAXTEXTURES; i++) {
+        if (dependencies[i] == 0)
+            break;
+
+        strcpy(filename, tempfolder_root);
+        strcat(filename, PATHSEP_STR);
+
+        if (dependencies[i][0] != '\\') {
+            strcat(filename, dependencies[i]);
+        }
+        else {
+            strcat(filename, dependencies[i] + 1);
+        }
+
+        if (!file_exists_fuzzy(filename)) {
+            *filename = 0;
+            *temp = 0;
+            if (dependencies[i][0] != '\\')
+                strcpy(filename, "\\");
+            strcat(filename, dependencies[i]);
+
+            if (find_file(filename, "", temp, true, true)) {
+                warningf("Failed to find file %s.\n", filename);
+                continue;
+            }
+            else {
+                strcpy(strrchr(dependencies[i], '.'), strrchr(temp, '.'));
+            }
+
+            strcpy(filename, tempfolder_root);
+            strcat(filename, PATHSEP_STR);
+            strcat(filename, dependencies[i]);
+
+            if (copy_file(temp, filename)) {
+                errorf("Failed to copy %s to temp folder %s.\n", temp, filename);
+                return 3;
+            }
+        }
+        char *ext = strrchr(filename, '.');
+        if ((ext != NULL) && (stricmp(ext, ".rvmat") == 0))
+            rapify_file_get_files(filename, filename, tempfolder_root);
+
+
+        free(dependencies[i]);
+    }
+    return 0;
+}
+
+
 int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
     /*
      * Binarize the given file. If source and target are identical, the target
@@ -877,9 +879,11 @@ int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
         !stricmp(fileext, ".ext"))
         return rapify_file_get_files(source, target, tempfolder);
 
+#ifdef _WIN32
     if (!stricmp(fileext, ".rtm")) {
         return attempt_bis_binarize_rtm(source, target);
     }
+#endif
 
     if (!stricmp(fileext, ".p3d")) {
 #ifdef _WIN32
