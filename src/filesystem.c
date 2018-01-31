@@ -411,7 +411,7 @@ int copy_file(char *source, char *target) {
                     copy_file = false;
                 }
             } else {
-                if (fileTime64_source < fileTime64_target) {
+                if (fileTime64_source <= fileTime64_target) {
                     //infof("Skipping file %s\n.", source);
                     copy_file = false;
                 }
@@ -649,12 +649,12 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
 
     int status = -1;
     char fileext[64];
-    char filename[1024];
+    char filename[2048];
 
-    strcpy(filename, strrchr(source, PATHSEP) + 1);
+    strncpy(filename, strrchr(source, PATHSEP) + 1, sizeof(filename));
 
     if (strrchr(source, '.') != NULL) {
-        strcpy(fileext, strrchr(source, '.'));
+        strncpy(fileext, strrchr(source, '.'), sizeof(fileext));
         if (fileext != NULL && ((!stricmp(fileext, ".h")) || (!stricmp(fileext, ".hpp")) || (!stricmp(fileext, ".cpp"))))
             status = 0;
         else if (!stricmp(filename, "$PBOPREFIX$.txt"))
@@ -668,9 +668,8 @@ int copy_includes_callback(char *source_root, char *source, char *target_root) {
         char prefixedpath[2048];
         get_prefixpath(source, source_root, prefixedpath, sizeof(prefixedpath));
 
-        char *target = malloc(sizeof(*target)* (strlen(prefixedpath) + strlen(target_root) + 1 + 1)); // assume worst case
-        target[0] = 0;
-        strcat(target, target_root);
+        char *target = malloc(sizeof(*target)* (strlen(target_root) + strlen(PATHSEP_STR) + strlen(prefixedpath) + 1));
+        strcpy(target, target_root);
         strcat(target, PATHSEP_STR);
         strcat(target, prefixedpath);
         status = copy_file(source, target);

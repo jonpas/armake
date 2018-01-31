@@ -648,7 +648,7 @@ int rapify_file_get_filelist(char *source, char *target, struct filelist **files
     result = parse_file(f_temp, lineref);
 
     if (result == NULL) {
-        errorf("Failed to parse config.\n");
+        errorf("Failed to parse config %s.\n", source);
         return 1;
     }
 

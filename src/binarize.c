@@ -202,7 +202,7 @@ int attempt_bis_binarize(char *source, char *target) {
 }
 
 
-int attempt_bis_bulk_binarize(char *source) {
+int attempt_bis_bulk_binarize(char *source, char *addonprefix) {
     /*
     * Attempts to use the BI binarize.exe to binarization source folder. If the
     * exe is not found, a negative integer is returned. 0 is returned on
@@ -222,12 +222,12 @@ int attempt_bis_bulk_binarize(char *source) {
 
     current_operation = OP_BULK;
 
-    mbstowcs(wc_build, source, 2048);
+    mbstowcs(wc_build, source, sizeof(wc_build));
 
     char temppath[2048];
     wchar_t wc_temppath[2048];
-    get_temp_path(temppath, 2048);
-    mbstowcs(wc_temppath, temppath, 2048);
+    get_temp_path(temppath, sizeof(temppath));
+    mbstowcs(wc_temppath, temppath, sizeof(wc_temppath));
 
     infof("Checking P3D(s) for dependencies...\n");
     struct build_ignore_data ignore_data;
@@ -235,8 +235,7 @@ int attempt_bis_bulk_binarize(char *source) {
     strcpy(ignore_data.tempfolder_root, temppath);
     copy_bulk_p3ds_dependencies(source, &ignore_data);
 
-
-
+    
     if (wcslens(wc_addonpaths) <= 0) {
         swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls",
             wc_binarize, wc_temppath, wc_build, wc_build);
@@ -254,14 +253,16 @@ int attempt_bis_bulk_binarize(char *source) {
     }
 
     wchar_t wc_logfile[2048];
-    wcscpy(wc_logfile, wc_temppath);
-    wcscat(wc_logfile, L"\\");
-    wcscat(wc_logfile, L"armake_");
-    wcscat(wc_logfile, L"bin_bulk.log");
+    char sanitized_addonprefix[2048];
+    strcpy(sanitized_addonprefix, addonprefix);
+    for (size_t i = 0; i <= strlen(addonprefix); i++)
+        sanitized_addonprefix[i] = (addonprefix[i] == '\\' || addonprefix[i] == '/') ? '_' : addonprefix[i];
+    swprintf(wc_logfile, sizeof(wc_logfile), L"%ls\\armake_bin_%S.log", wc_temppath, sanitized_addonprefix);
 
     secattr.lpSecurityDescriptor = NULL;
     secattr.bInheritHandle = TRUE;
-    info.hStdOutput = info.hStdError = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h_logfile = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    info.hStdOutput = info.hStdError = h_logfile;
     info.dwFlags |= STARTF_USESTDHANDLES;
 
     infof("Binarzing bulk...\n");
@@ -269,7 +270,9 @@ int attempt_bis_bulk_binarize(char *source) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
+        CloseHandle(h_logfile);
     } else {
+        CloseHandle(h_logfile);
         errorf("Failed to binarize %s.\n", source);
         free(wc_command);
         return 3;
@@ -513,14 +516,17 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
 
     secattr.lpSecurityDescriptor = NULL;
     secattr.bInheritHandle = TRUE;
-    info.hStdOutput = info.hStdError = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h_logfile = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    info.hStdOutput = info.hStdError = h_logfile;
     info.dwFlags |= STARTF_USESTDHANDLES;
 
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_build, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
+        CloseHandle(h_logfile);
     } else {
+        CloseHandle(h_logfile);
         errorf("Failed to binarize %s.\n", source);
         return 3;
     }
@@ -661,14 +667,17 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
 
     secattr.lpSecurityDescriptor = NULL;
     secattr.bInheritHandle = TRUE;
-    info.hStdOutput = info.hStdError = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h_logfile = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    info.hStdOutput = info.hStdError = h_logfile;
     info.dwFlags |= STARTF_USESTDHANDLES;
     
     if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
         WaitForSingleObject(processInfo.hProcess, INFINITE);
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
+        CloseHandle(h_logfile);
     } else {
+        CloseHandle(h_logfile);
         errorf("Failed to binarize %s.\n", source);
         free(wc_command);
         return 3;

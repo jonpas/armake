@@ -287,7 +287,8 @@ int hash_file(char *path, unsigned char *hash) {
 int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolder_root, char *target) {
     infof("---------------------------------------------------------------\n");
     infof("---------------------------------------------------------------\n");
-    infof("Building %s\n", addonprefix);
+    infof("  Prefix %s\n", addonprefix);
+    infof("  Target %s\n", target);
     infof("---------------------------------------------------------------\n");
     char nobinpath[1024];
     char notestpath[1024];
@@ -323,7 +324,7 @@ int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolde
             }
             }
 #ifdef _WIN32
-        if (attempt_bis_bulk_binarize(tempfolder)) {
+        if (attempt_bis_bulk_binarize(tempfolder, addonprefix)) {
             errorf("Failed to bulk binarize some files.\n");
             remove_file(target);
             remove_folder(tempfolder);
