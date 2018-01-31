@@ -137,6 +137,8 @@ int attempt_bis_binarize(char *source, char *target) {
 
     // Copy P3D Dependencies to temp folder
     success = get_p3d_dependencies(source, tempfolder);
+    current_operation = OP_P3D;
+    strcpy(current_target, source);
     if (success > 0)
         return success;
 
@@ -721,6 +723,12 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
     * Copies p3d depenencies to tempfolder location
     * i.e if p3d is using textures/rvmats from a3/  need to copy this into temp folder for BI binarize
     */
+    extern int current_operation;
+    extern char current_target[2048];
+
+    current_operation = OP_P3D;
+    strcpy(current_target, source);
+
     char temp[2048];
     char filename[2048];
     char *dependencies[MAXTEXTURES];
@@ -747,7 +755,7 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
 
     fclose(f_source);
 
-    memset(dependencies, 0, MAXTEXTURES * 2);
+    memset(dependencies, 0, sizeof(dependencies));
     for (i = 0; i < num_lods; i++) {
         for (j = 0; j < mlod_lods[i].num_faces; j++) {
             if (strlen(mlod_lods[i].faces[j].texture_name) > 0 && mlod_lods[i].faces[j].texture_name[0] != '#') {
@@ -801,6 +809,8 @@ int get_p3d_dependencies(char *source, char *tempfolder_root) {
                     strcpy(proxy_temp_filename, tempfolder_root);
                     strcat(proxy_temp_filename, (mlod_lods[i].selections[j].name) + 6);
                     get_p3d_dependencies(proxy_temp_filename, tempfolder_root); // TODO Optimize???
+                    current_operation = OP_P3D;
+                    strcpy(current_target, source);
                 }
 
             }
@@ -889,7 +899,7 @@ int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
         return rapify_file_get_files(source, target, tempfolder);
 
 #ifdef _WIN32
-    if (!stricmp(fileext, ".rtm")) {
+    if (!stricmp(fileext, ".rtm")) { //TODO Check if already binarized
         return attempt_bis_binarize_rtm(source, target);
     }
 #endif
