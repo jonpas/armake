@@ -285,6 +285,10 @@ int hash_file(char *path, unsigned char *hash) {
 
 
 int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolder_root, char *target) {
+    infof("---------------------------------------------------------------\n");
+    infof("---------------------------------------------------------------\n");
+    infof("Building %s\n", addonprefix);
+    infof("---------------------------------------------------------------\n");
     char nobinpath[1024];
     char notestpath[1024];
     strcpy(nobinpath, prefixpath);
@@ -423,11 +427,14 @@ int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolde
         strcat(path_signature, keyname);
         strcat(path_signature, ".bisign");
 
+        /*
+        Always resign incase pbo has changed i.e user deleted previous pbo but not the signature
         // check if target already exists
         if (access(path_signature, F_OK) != -1 && !args.force) {
             errorf("File %s already exists and --force was not set.\n", path_signature);
             return 1;
         }
+        */
 
         if (sign_pbo(target, args.privatekey, path_signature)) {
             errorf("Failed to sign file.\n");
@@ -453,13 +460,14 @@ int cmd_build(bool recursive) {
     if (args.source[strlen(args.source) - 1] == '/')
         args.source[strlen(args.source) - 1] = 0;
 
-    // check if target already exists
-    FILE *f_target;
-    if (access(args.target, F_OK) != -1 && !args.force) {
-        errorf("File %s already exists and --force was not set.\n", args.target);
-        return 1;
-    }
+
     if (!args.buildall) {
+        // check if target already exists
+        FILE *f_target;
+        if (access(args.target, F_OK) != -1 && !args.force) {
+            errorf("File %s already exists and --force was not set.\n", args.target);
+            return 1;
+        }
         f_target = fopen(args.target, "wb");
         if (!f_target) {
             errorf("Failed to open %s.\n", args.target);

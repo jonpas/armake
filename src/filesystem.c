@@ -513,7 +513,7 @@ int traverse_directory_recursive(char *root, char *cwd, bool *avoid_other_pbopre
     char mask[2048];
     wchar_t wc_mask[2048];
     char mask_pboprefix[2048];
-    int success;
+    int success = 0;
 
     if (cwd[strlen(cwd) - 1] == '\\')
         cwd[strlen(cwd) - 1] = 0;
@@ -539,15 +539,15 @@ int traverse_directory_recursive(char *root, char *cwd, bool *avoid_other_pbopre
                 strcpy(mask_pboprefix, mask);
                 strcat(mask_pboprefix, "$PBOPREFIX$");
                 if (!file_exists(mask_pboprefix))
-                    traverse_directory_recursive(root, mask, avoid_other_pboprefixes, callback, third_arg);
+                    success = traverse_directory_recursive(root, mask, avoid_other_pboprefixes, callback, third_arg);
             } else {
-              traverse_directory_recursive(root, mask, avoid_other_pboprefixes, callback, third_arg);
+                success = traverse_directory_recursive(root, mask, avoid_other_pboprefixes, callback, third_arg);
             }
         } else {
             success = callback(root, mask, third_arg);
-            if (success)
-                return success;
         }
+        if (success != 0)
+            return success;
     } while (FindNextFile(handle, &file));
 
     FindClose(handle);
@@ -706,7 +706,6 @@ int build_all_callback(char *source_root, char *source, char *target_root) {
         *strrchr(directory, PATHSEP) = 0;
         get_prefixpath_directory(directory, addonprefix, sizeof(addonprefix));
 
-        infof("Preparing temp folder...\n");
         char tempfolder[1024];
         if (create_temp_folder(addonprefix, tempfolder, sizeof(tempfolder))) {
             errorf("Failed to create temp folder.\n");
@@ -718,7 +717,13 @@ int build_all_callback(char *source_root, char *source, char *target_root) {
         strcat(target, PATHSEP_STR);
         strcat(target, (strrchr(directory, PATHSEP) + 1));
         strcat(target, ".pbo");
-        return build(source, tempfolder, addonprefix, tempfolder_root, target); // TODO change target to args.target/directoryname.pbo
+        
+        if (file_exists(target) && (!args.force)) {
+            infof("Skipping pbo, already exists %s\n", target);
+            return 0; // Skip Building PBO if exists & force disabled
+        } else {
+            return build(source, tempfolder, addonprefix, tempfolder_root, target);
+        }
     };
     return 0;
 }
