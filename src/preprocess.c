@@ -849,6 +849,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
     // strcpy(constants[3].name, "__EVAL");
     // if (constants[3].value == 0)
     //     constants[3].value = (char *)malloc(1);
+    bool enum_ignore = false;
 
     while (true) {
         // get line and add next lines if line ends with a backslash
@@ -922,6 +923,8 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
             }
         }
 
+
+
         // trim leading spaces
         trim_leading(buffer, strlens(buffer)+1);
 
@@ -940,6 +943,32 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
         // if (constants[1].value == 0)
         //     constants[1].value = (char *)malloc(16);
         // sprintf(constants[1].value, "%i", line - 1);
+
+
+        // Ignore enum
+        if (!enum_ignore) {
+            if (strncmp(buffer, "enum ", 5) == 0) {
+                free(buffer);
+                buffer = NULL;
+                enum_ignore = true;
+                continue;
+            }
+        } else {
+            if (strchr(buffer, ';')) {
+                ptr = buffer;
+                bool loop = true;
+                while (loop) {
+                    if (*ptr == ';')
+                        loop = false;
+                    *ptr = ' ';
+                    ptr++;
+                }
+                trim_leading(buffer, strlens(buffer) + 1);
+                enum_ignore = false;
+            } else {
+                continue;
+            }
+        };
 
         if (level_comment == 0 && buffer[0] == '#') {
             ptr = buffer+1;
@@ -973,7 +1002,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
                     return 6;
                 }
                 *strchr(includepath, '"') = 0;
-                if (find_file(includepath, source, actualpath, true, false)) {
+                if (find_file(includepath, source, actualpath, true, false)) { // TODO Check if include is already in temp directory for bi binarize
                     lerrorf(source, line, "Failed to find %s.\n", includepath);
                     fclose(f_source);
                     return 7;
