@@ -26,15 +26,16 @@ struct filelist {
     struct filelist *next;
 };
 
-struct build_ignore_data {
+struct build_data {
     char tempfolder_root[2048];
-    struct filelist *fileslist;
+    struct filelist *ignore_fileslist;
+    bool build;
 };
 
 #ifdef _WIN32
-void build_add_ignore(char *filename, struct build_ignore_data *data);
+void build_add_ignore(char *filename, struct build_data *data);
 
-void build_revert_ignores(struct build_ignore_data *data);
+void build_revert_ignores(struct build_data *data);
 #endif
 
 int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolder_root, char *target);

@@ -1,6 +1,6 @@
-#ifndef _WIN32
+#ifndef _MSC_VER
 #include <unistd.h>
-#else
+#else  // Windows Compiler
 // https://stackoverflow.com/questions/341817/is-there-a-replacement-for-unistd-h-for-windows-visual-c/826027#826027
 
 #define R_OK    4       /* Test for read permission.  */

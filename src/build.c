@@ -58,7 +58,7 @@ int binarize_callback(char *root, char *source, char *tempfolder) {
 
 #ifdef _WIN32
 
-void build_add_ignore(char *filename, struct build_ignore_data *data) {
+void build_add_ignore(char *filename, struct build_data *data) {
     /*
     * Renames a file by appending .ignore to the filename
     * New Filename is stored in memory in a struct
@@ -70,11 +70,11 @@ void build_add_ignore(char *filename, struct build_ignore_data *data) {
     remove_file(newfilename);
     rename_file(filename, newfilename);
 
-    struct filelist *ptr = data->fileslist;
+    struct filelist *ptr = data->ignore_fileslist;
     if (ptr == NULL) {
         ptr = malloc(sizeof(struct filelist));
         ptr->next = NULL;
-        data->fileslist = ptr;
+        data->ignore_fileslist = ptr;
     } else {
         while ((ptr->next) != NULL) {
             ptr = ptr->next;
@@ -87,13 +87,13 @@ void build_add_ignore(char *filename, struct build_ignore_data *data) {
 }
 
 
-void build_revert_ignores(struct build_ignore_data *data) {
+void build_revert_ignores(struct build_data *data) {
     /*
     * Reverts files back to original name,
     *   that were renamed by build_add_ignore
     *
     */
-    struct filelist *ptr = data->fileslist;
+    struct filelist *ptr = data->ignore_fileslist;
     struct filelist *ptr_previous;
     char newfilename[2048];
     char *fileext;
@@ -107,7 +107,7 @@ void build_revert_ignores(struct build_ignore_data *data) {
     }
 
     // Scan List again for WRPs (want p3ds etc reverted before attempting to binarize wrp)
-    ptr = data->fileslist;
+    ptr = data->ignore_fileslist;
     while (ptr != NULL) {
         strncpy(newfilename, ptr->filename, sizeof(newfilename));
         *(strrchr(newfilename, '.')) = 0;
@@ -118,7 +118,7 @@ void build_revert_ignores(struct build_ignore_data *data) {
         ptr = ptr->next;
         free(ptr_previous);
     }
-    data->fileslist = NULL;
+    data->ignore_fileslist = NULL;
 }
 
 #endif
@@ -129,14 +129,17 @@ bool file_allowed(char *filename) {
 
     if (stricmp(filename, "$PBOPREFIX$") == 0)
         return false;
-    if (stricmp(strrchr(filename, '.'), ".cfg") == 0) // model.cfg etc
-        return false;
-    if (stricmp(strrchr(filename, '.'), ".tga") == 0)
-        return false;
-    if (stricmp(strrchr(filename, '.'), ".dep") == 0)
-        return false;
-    if (stricmp(strrchr(filename, '.'), ".ignore") == 0)
-        return false;
+    char *fileext = strrchr(filename, '.');
+    if (fileext != NULL) {
+        if (stricmp(fileext, ".cfg") == 0) // model.cfg etc
+            return false;
+        if (stricmp(fileext, ".tga") == 0)
+            return false;
+        if (stricmp(fileext, ".dep") == 0)
+            return false;
+        if (stricmp(fileext, ".ignore") == 0)
+            return false;
+    }
     for (i = 0; i < MAXEXCLUDEFILES && exclude_files[i][0] != 0; i++) {
         if (matches_glob(filename, exclude_files[i]))
             return false;

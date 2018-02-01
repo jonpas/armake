@@ -232,52 +232,56 @@ int attempt_bis_bulk_binarize(char *source, char *addonprefix) {
     mbstowcs(wc_temppath, temppath, sizeof(wc_temppath));
 
     infof("Checking P3D(s) for dependencies...\n");
-    struct build_ignore_data ignore_data;
-    ignore_data.fileslist = NULL;
+    struct build_data ignore_data;
+    ignore_data.build = false;
+    ignore_data.ignore_fileslist = NULL;
     strcpy(ignore_data.tempfolder_root, temppath);
     copy_bulk_p3ds_dependencies(source, &ignore_data);
 
-    
-    if (wcslens(wc_addonpaths) <= 0) {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls",
-            wc_binarize, wc_temppath, wc_build, wc_build);
-    } else {
-        swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls %ls",
-            wc_binarize, wc_temppath, wc_addonpaths, wc_build, wc_build);
-    }
+    if (ignore_data.build) { // Only run binarize if MLOD P3D to be binarized
+
+        if (wcslens(wc_addonpaths) <= 0) {
+            swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls",
+                wc_binarize, wc_temppath, wc_build, wc_build);
+        }
+        else {
+            swprintf(wc_command, wc_command_len, L"\"%ls\" -always -maxProcesses=0 -binpath=%ls %ls %ls %ls",
+                wc_binarize, wc_temppath, wc_addonpaths, wc_build, wc_build);
+        }
 
 
-    if (getenv("BIOUTPUT")) {
-        char *command = malloc(sizeof(char) * (wc_command_len + 1));
-        wcstombs(command, wc_command, wc_command_len);
-        debugf("cmdline: %s\n", command);
-        free(command);
-    }
+        if (getenv("BIOUTPUT")) {
+            char *command = malloc(sizeof(char) * (wc_command_len + 1));
+            wcstombs(command, wc_command, wc_command_len);
+            debugf("cmdline: %s\n", command);
+            free(command);
+        }
 
-    wchar_t wc_logfile[2048];
-    char sanitized_addonprefix[2048];
-    strcpy(sanitized_addonprefix, addonprefix);
-    for (size_t i = 0; i <= strlen(addonprefix); i++)
-        sanitized_addonprefix[i] = (addonprefix[i] == '\\' || addonprefix[i] == '/') ? '_' : addonprefix[i];
-    swprintf(wc_logfile, sizeof(wc_logfile), L"%ls\\armake_bin_%S.log", wc_temppath, sanitized_addonprefix);
+        wchar_t wc_logfile[2048];
+        char sanitized_addonprefix[2048];
+        strcpy(sanitized_addonprefix, addonprefix);
+        for (size_t i = 0; i <= strlen(addonprefix); i++)
+            sanitized_addonprefix[i] = (addonprefix[i] == '\\' || addonprefix[i] == '/') ? '_' : addonprefix[i];
+        swprintf(wc_logfile, sizeof(wc_logfile), L"%ls\\armake_bin_%S.log", wc_temppath, sanitized_addonprefix);
 
-    secattr.lpSecurityDescriptor = NULL;
-    secattr.bInheritHandle = TRUE;
-    HANDLE h_logfile = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    info.hStdOutput = info.hStdError = h_logfile;
-    info.dwFlags |= STARTF_USESTDHANDLES;
+        secattr.lpSecurityDescriptor = NULL;
+        secattr.bInheritHandle = TRUE;
+        HANDLE h_logfile = CreateFile(wc_logfile, GENERIC_WRITE, FILE_SHARE_READ, &secattr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        info.hStdOutput = info.hStdError = h_logfile;
+        info.dwFlags |= STARTF_USESTDHANDLES;
 
-    infof("Binarzing bulk...\n");
-    if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
-        WaitForSingleObject(processInfo.hProcess, INFINITE);
-        CloseHandle(processInfo.hProcess);
-        CloseHandle(processInfo.hThread);
-        CloseHandle(h_logfile);
-    } else {
-        CloseHandle(h_logfile);
-        errorf("Failed to binarize %s.\n", source);
-        free(wc_command);
-        return 3;
+        infof("Binarizing bulk...\n");
+        if (CreateProcess(NULL, wc_command, NULL, NULL, TRUE, 0, NULL, wc_temppath, &info, &processInfo)) {
+            WaitForSingleObject(processInfo.hProcess, INFINITE);
+            CloseHandle(processInfo.hProcess);
+            CloseHandle(processInfo.hThread);
+            CloseHandle(h_logfile);
+        } else {
+            CloseHandle(h_logfile);
+            errorf("Failed to binarize %s.\n", source);
+            free(wc_command);
+            return 3;
+        }
     }
 
     infof("Restoring PreBinarized P3Ds...\n");

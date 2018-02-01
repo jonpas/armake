@@ -609,7 +609,7 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
     *alternative_filename = 0;
     *alternative_includepath = 0;
     if (fuzzy_filename) {
-        if ((strrchr(filename, '.') != NULL) && (!stricmp(strrchr(filename, '.'), ".tga"))) {
+        if ((strrchr(filename, '.') != NULL) && ((!stricmp(strrchr(filename, '.'), ".tga")) || (!stricmp(strrchr(filename, '.'), ".png")))) {
             strncpy(alternative_filename, filename, 2048);
             strcpy(strchr(alternative_filename, '.'), ".paa");
             strncpy(alternative_includepath, includepath, 2048);
@@ -978,6 +978,7 @@ int preprocess(char *source, FILE *f_target, struct constants *constants, struct
             directive = (char *)malloc(strlen(ptr) + 1);
             strcpy(directive, ptr);
             *(strchrnul(directive, ' ')) = 0;
+            *(strchrnul(directive, '\t')) = 0;
             *(strchrnul(directive, '\n')) = 0;
 
             ptr += strlen(directive);

@@ -306,6 +306,9 @@ void parse_class_dependencies(struct class *result, struct filelist **files)
     struct class *config_class;
     struct definition *tmp;
 
+    char tempfolder_root[2048]; // TODO Change this into extern?
+    get_temp_path(tempfolder_root, sizeof(tempfolder_root));
+
     tmp = result->content->head;
     struct filelist *files_ptr;
     files_ptr = *files;
@@ -325,6 +328,23 @@ void parse_class_dependencies(struct class *result, struct filelist **files)
                         }
                         files_ptr->next = malloc(sizeof(struct filelist));
                         files_ptr = files_ptr->next;
+                    }
+                    if ((strncmp(config_variable->expression->string_value, "#", 1) != 0) &&
+                            (strncmp(config_variable->expression->string_value, "(", 1) != 0) &&
+                            ((strlens(config_variable->expression->string_value) > 0))) {
+                        char *fileext = strrchr(config_variable->expression->string_value, '.');
+                        if ((fileext != NULL) && ((stricmp(fileext, ".tga") == 0) || (stricmp(fileext, ".png") == 0))) {
+                            char temp[2048];
+                            strcpy(temp, tempfolder_root);
+                            strcat(temp, PATHSEP_STR);
+                            if (config_variable->expression->string_value[strlen(config_variable->expression->string_value) - 1] != PATHSEP)
+                                strcat(temp, PATHSEP_STR);
+                            strcat(temp, config_variable->expression->string_value);
+                            strcpy(strrchr(temp, '.'), ".paa");
+                            if (file_exists(temp)) {
+                                strcpy(strrchr(config_variable->expression->string_value, '.'), ".paa");
+                            }
+                        }
                     }
                     strncpy(files_ptr->filename, config_variable->expression->string_value, sizeof(files_ptr->filename));
                     files_ptr->next = NULL;
@@ -473,6 +493,10 @@ int rapify_file(char *source, char *target) {
         errorf("Failed to parse config.\n");
         return 1;
     }
+
+    // Get File References + Convert file paths to paa if exists
+    struct filelist **files;
+    parse_class_dependencies(result, files);
 
     // Rapify file
     f_target = fopen(target, "wb+");
@@ -721,7 +745,7 @@ int rapify_file_get_files(char *source, char *target, char *tempfolder) {
             if (temp_filename[strlen(temp_filename) - 1] != PATHSEP)
                 strcat(temp_filename, PATHSEP_STR);
             strcat(temp_filename, files->filename);
-            if (!file_exists(temp_filename)) {
+            if (!file_exists(temp_filename)) { // TODO Optimize
                 if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
                     warningf("Failed to find file %s\n", texture_path_corrected);
                     return -1;

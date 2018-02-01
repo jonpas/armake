@@ -53,10 +53,8 @@ int wrp_add_dependency(char *filename, char *tempfolder_root) {
 
 
     if (!stricmp(strrchr(dest, '.'), ".rvmat")) {
-        if (!getenv("DISABLE_RVMATS_CHECK")) {
-            int ret = rapify_file_get_files(dest, dest, tempfolder_root);
-            progressf();
-        }    
+        int ret = rapify_file_get_files(dest, dest, tempfolder_root);
+        progressf();
         return 0;  // Don't need rvmats to the list
     }
 
@@ -158,7 +156,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
     short materialindex, materiallength;
     unsigned long dObjIndex;
 
-    debugf("Scanning 8WVR");
+    debugf("Scanning 8WVR\n");
     fread(&texturegrid, 4, 1, wrp_map);
     debugf("texture grid x: %d\n", texturegrid);
     fread(&texturegrid, 4, 1, wrp_map);
@@ -222,8 +220,9 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
 
     // Start reading objects...
 
-    debugf("Reading 3d objects...");
+    debugf("Reading 3d objects...\n");
 
+    long int i = 0;
     for(;;)
     {
         fread(&dDir, sizeof(float), 3*4, wrp_map);
@@ -235,11 +234,10 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         fread(dObjName,sizeof(char),len, wrp_map);
         dObjName[len] = 0;
         wrp_add_dependency(dObjName, tempfolder_root);
+        i++;
     }
     // should now be at eof
-    //debugf(" Done\nNumber of P3D objects: %ld\n", i);
-
-    debugf("All fine, 8WVR file read, exiting. Have a nice day!\n");
+    debugf(" Number of P3D objects: %ld\n", i);
     return 0;
 }
 

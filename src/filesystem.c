@@ -72,11 +72,13 @@ bool file_exists_fuzzy(char *path) {
         if ((!stricmp(strrchr(path, '.'), ".tga")) || (!stricmp(strrchr(path, '.'), ".png"))) {
             char *alternative_path = malloc(sizeof(*alternative_path) * len);
             strncpy(alternative_path, path, len);
-            strcpy(strchr(alternative_path, '.'), ".paa");
+            strcpy(strrchr(alternative_path, '.'), ".paa");
             mbstowcs(wc_path, alternative_path, len);
             free(alternative_path);
             attrs = GetFileAttributes(wc_path);
             status = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+            if (status)
+                strcpy(strrchr(path, '.'), ".paa");
         }
     }
 
@@ -92,9 +94,11 @@ bool wc_file_exists(wchar_t *wc_path) {
     unsigned long attrs = GetFileAttributes(wc_path);
     return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
 }
+#endif
 
-// https://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/47229318#47229318
+#ifdef _MSC_VER
 ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+    // https://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/47229318#47229318
     size_t pos;
     int c;
 
@@ -142,6 +146,7 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
     return pos - 1;
 }
 #endif
+
 
 
 void get_temp_path(char *path, size_t bufsize) {
@@ -925,12 +930,13 @@ int copy_includes(char *source, char *target) {
 
 
 #ifdef _WIN32
-int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, struct build_ignore_data *data) {
+int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, struct build_data *data) {
     char *ext = strrchr(source, '.');
     if (ext != NULL) {
         if (!stricmp(ext, ".p3d")) {
             progressf();
             if (is_mlod(source) == 0) {
+                data->build = true;
                 int ret = get_p3d_dependencies(source, data->tempfolder_root);
                 if (ret > 0)
                     return ret;
@@ -947,7 +953,7 @@ int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, struct
 }
 
 
-int copy_bulk_p3ds_dependencies(char *source, struct build_ignore_data *data) {
+int copy_bulk_p3ds_dependencies(char *source, struct build_data *data) {
     /*
     * Recursively scans p3ds, checks if MLOD/OLOD.
     * Renames OLODs to filename.p3d.ignore (to prevent binarize crash)
