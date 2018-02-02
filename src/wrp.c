@@ -54,7 +54,6 @@ int wrp_add_dependency(char *filename, char *tempfolder_root) {
 
     if (!stricmp(strrchr(dest, '.'), ".rvmat")) {
         int ret = rapify_file_get_files(dest, dest, tempfolder_root);
-        progressf();
         return 0;  // Don't need rvmats to the list
     }
 
@@ -219,8 +218,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
     }
 
     // Start reading objects...
-
-    debugf("Reading 3d objects...\n");
+    debugf("Parsing p3d objects...\n");
 
     long int i = 0;
     for(;;)
@@ -237,7 +235,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         i++;
     }
     // should now be at eof
-    debugf(" Number of P3D objects: %ld\n", i);
+    debugf(" Found: %ld\n", i);
     return 0;
 }
 

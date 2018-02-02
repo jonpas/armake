@@ -334,15 +334,24 @@ void parse_class_dependencies(struct class *result, struct filelist **files)
                             ((strlens(config_variable->expression->string_value) > 0))) {
                         char *fileext = strrchr(config_variable->expression->string_value, '.');
                         if ((fileext != NULL) && ((stricmp(fileext, ".tga") == 0) || (stricmp(fileext, ".png") == 0))) {
-                            char temp[2048];
-                            strcpy(temp, tempfolder_root);
-                            strcat(temp, PATHSEP_STR);
+                            char dest[2048];
+                            strcpy(dest, tempfolder_root);
                             if (config_variable->expression->string_value[strlen(config_variable->expression->string_value) - 1] != PATHSEP)
-                                strcat(temp, PATHSEP_STR);
-                            strcat(temp, config_variable->expression->string_value);
-                            strcpy(strrchr(temp, '.'), ".paa");
-                            if (file_exists(temp)) {
+                                strcat(dest, PATHSEP_STR);
+                            strcat(dest, config_variable->expression->string_value);
+                            strcpy(strrchr(dest, '.'), ".paa");
+                            if (file_exists(dest)) {
                                 strcpy(strrchr(config_variable->expression->string_value, '.'), ".paa");
+                            } else {
+                                char source[2048];
+                                source[0] = 0;
+                                if (config_variable->expression->string_value[strlen(config_variable->expression->string_value) - 1] != PATHSEP)
+                                    strcat(source, PATHSEP_STR);
+                                strcat(source, config_variable->expression->string_value);
+                                if (!find_file(source, "", source, true, false)) {
+                                    copy_file(source, dest);
+                                    strcpy(strrchr(config_variable->expression->string_value, '.'), ".paa");
+                                }
                             }
                         }
                     }
@@ -745,8 +754,8 @@ int rapify_file_get_files(char *source, char *target, char *tempfolder) {
             if (temp_filename[strlen(temp_filename) - 1] != PATHSEP)
                 strcat(temp_filename, PATHSEP_STR);
             strcat(temp_filename, files->filename);
-            if (!file_exists(temp_filename)) { // TODO Optimize
-                if (find_file(texture_path_corrected, "", texture_path_corrected, true, true)) {
+            if (!file_exists(temp_filename)) { // File should already exist, but we go through the motion again if it doesn't so can pass error info to end-user
+                if (find_file(texture_path_corrected, "", texture_path_corrected, true, false)) { // Already check for other filetypes when rapified
                     warningf("Failed to find file %s\n", texture_path_corrected);
                     return -1;
                 } else {

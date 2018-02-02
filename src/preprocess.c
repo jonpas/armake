@@ -655,20 +655,20 @@ int find_file_helper(char *includepath, char *origin, char *includefolder, char 
                 return 0;
         } else {
             if (case_insensitive) {
-                if (wcsicmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder, case_insensitive)) {
-                    strncpy(actualpath, mask, 2048);
-                    return 0;
-                }
                 if ((alternative_filename != NULL) && wcsicmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }
-            } else {
-                if (wcscmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder, case_insensitive)) {
+                if (wcsicmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder, case_insensitive)) {
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }
+            } else {
                 if ((alternative_filename != NULL) && wcscmp(wc_alternative_filename, file.cFileName) == 0 && matches_includepath(mask, alternative_includepath, includefolder, case_insensitive)) {
+                    strncpy(actualpath, mask, 2048);
+                    return 0;
+                }
+                if (wcscmp(wc_filename, file.cFileName) == 0 && matches_includepath(mask, includepath, includefolder, case_insensitive)) {
                     strncpy(actualpath, mask, 2048);
                     return 0;
                 }
@@ -731,8 +731,7 @@ int find_file(char *includepath, char *origin, char *actualpath, bool case_insen
     /*
      * Finds the file referenced in includepath in the includefolder. origin
      * describes the file in which the include is used (used for relative
-     * includes). actualpath holds the return pointer. The 4th arg is used for
-     * recursion on Windows and should be passed as NULL initially.
+     * includes). actualpath holds the return pointer. 
      *
      * Returns 0 on success, 1 on error and 2 if no file could be found.
      *
