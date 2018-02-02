@@ -129,6 +129,7 @@ bool file_allowed(char *filename) {
 
     if (stricmp(filename, "$PBOPREFIX$") == 0)
         return false;
+
     char *fileext = strrchr(filename, '.');
     if (fileext != NULL) {
         if (stricmp(fileext, ".cfg") == 0) // model.cfg etc
@@ -138,6 +139,8 @@ bool file_allowed(char *filename) {
         if (stricmp(fileext, ".dep") == 0)
             return false;
         if (stricmp(fileext, ".ignore") == 0)
+            return false;
+        if (stricmp(fileext, ".cpp") == 0) // config.cpp etc all .cpp get rapified
             return false;
     }
     for (i = 0; i < MAXEXCLUDEFILES && exclude_files[i][0] != 0; i++) {
@@ -310,22 +313,6 @@ int build(char *prefixpath, char *tempfolder, char *addonprefix, char *tempfolde
             return 4;
         }
 
-        char configpath[2048];
-        strcpy(configpath, tempfolder);
-        strcat(configpath, "?config.cpp");
-        configpath[strlen(tempfolder)] = PATHSEP;
-
-        if (access(configpath, F_OK) != -1) {
-#ifdef _WIN32
-            if (remove_file(configpath)) {
-#else
-            if (remove(configpath)) {
-#endif
-                remove_file(target);
-                remove_folder(tempfolder);
-                return 5;
-            }
-            }
 #ifdef _WIN32
         if (attempt_bis_bulk_binarize(tempfolder, addonprefix)) {
             errorf("Failed to bulk binarize some files.\n");
