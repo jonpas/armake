@@ -126,11 +126,14 @@ void build_revert_ignores(struct build_data *data) {
 bool file_allowed(char *filename) {
     int i;
     extern char exclude_files[MAXEXCLUDEFILES][512];
+    char *fileext;
 
     if (stricmp(filename, "$PBOPREFIX$") == 0)
         return false;
+    if (stricmp(filename, "config.cpp") == 0)
+        return false;
 
-    char *fileext = strrchr(filename, '.');
+    fileext = strrchr(filename, '.');
     if (fileext != NULL) {
         if (stricmp(fileext, ".cfg") == 0) // model.cfg etc
             return false;
@@ -139,8 +142,6 @@ bool file_allowed(char *filename) {
         if (stricmp(fileext, ".dep") == 0)
             return false;
         if (stricmp(fileext, ".ignore") == 0)
-            return false;
-        if (stricmp(fileext, ".cpp") == 0) // config.cpp etc all .cpp get rapified
             return false;
     }
     for (i = 0; i < MAXEXCLUDEFILES && exclude_files[i][0] != 0; i++) {

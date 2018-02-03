@@ -93,7 +93,9 @@ int main(int argc, char *argv[]) {
     }
 
     // @todo
-    strcpy(include_folders[0], ".");
+    if (!args.include)
+        strcpy(include_folders[0], "."); // Default is current directory
+
     for (i = 0; i < argc - 1; i++) {
         if (strcmp(argv[i], "-x") == 0 || strcmp(argv[i], "--exclude") == 0) {
             for (j = 0; j < MAXEXCLUDEFILES && exclude_files[j][0] != 0; j++);
@@ -136,7 +138,7 @@ int main(int argc, char *argv[]) {
         if (found_bis_binarize) {
 
             wchar_t wc_include_folder[512];
-            for (i = 1; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) { //Skip Current Directory
+            for (i = 0; i < MAXINCLUDEFOLDERS && include_folders[i][0] != 0; i++) {
                 mbstowcs(wc_include_folder, include_folders[i], 512);
                 wcscat(wc_addonpaths, L" -addon=");
                 wcscat(wc_addonpaths, wc_include_folder);

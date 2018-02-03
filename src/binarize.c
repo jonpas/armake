@@ -887,7 +887,8 @@ int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
      * Force Option is only for when using BIS Tools to force to binarize a file (individually)
      */
 
-    char fileext[64];
+    char *filename;
+    char *fileext;
 #ifdef _WIN32
     extern bool warned_bi_not_found;
 #endif
@@ -895,10 +896,9 @@ int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
     if (strchr(source, '.') == NULL)
         return -1;
 
-    strncpy(fileext, strrchr(source, '.'), 64);
+    fileext = strrchr(source, '.');
 
-    if (!stricmp(fileext, ".cpp") ||
-        !stricmp(fileext, ".rvmat") ||
+    if (!stricmp(fileext, ".rvmat") ||
         !stricmp(fileext, ".ext"))
         return rapify_file_get_files(source, target, tempfolder);
 
@@ -927,6 +927,10 @@ int binarize(char *source, char *target, char *tempfolder, bool force_p3d) {
 #endif
         return mlod2odol(source, target);
     }
+
+    filename = strrchr(source, PATHSEP) + 1;
+    if (stricmp(filename, "config.cpp") == 0)
+        return rapify_file_get_files(source, target, tempfolder);
 
     return -1;
 }
