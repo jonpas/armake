@@ -938,7 +938,7 @@ int copy_bulk_p3ds_dependencies_callback(char *source_root, char *source, struct
             if (is_mlod(source) == 0) {
                 data->build = true;
                 int ret = get_p3d_dependencies(source, data->tempfolder_root);
-                if (ret > 0)
+                if ((ret > 0) && (ret != 2))
                     return ret;
             } else {
                 build_add_ignore(source, data);

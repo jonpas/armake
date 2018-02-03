@@ -45,8 +45,9 @@ bool file_exists_fuzzy(char *path);
 #ifdef _WIN32
 bool wc_file_exists(wchar_t *wc_path);
 
-int copy_bulk_p3ds_dependencies(char *source, struct build_ignore_data *data);
+int copy_bulk_p3ds_dependencies(char *source, struct build_data *data);
 #endif
+
 
 #ifdef _MSC_VER
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);

@@ -130,7 +130,15 @@ bool file_allowed(char *filename) {
 
     if (stricmp(filename, "$PBOPREFIX$") == 0)
         return false;
-    if (stricmp(filename, "config.cpp") == 0)
+
+    char *temp;
+    temp = strrchr(filename, PATHSEP);
+    if (temp == NULL) {
+        temp = filename;
+    } else {
+        temp++;
+    }
+    if (stricmp(temp, "config.cpp") == 0)
         return false;
 
     fileext = strrchr(filename, '.');
