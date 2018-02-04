@@ -504,7 +504,7 @@ int rapify_file(char *source, char *target) {
     }
 
     // Get File References + Convert file paths to paa if exists
-    struct filelist **files;
+    struct filelist **files = 0;
     parse_class_dependencies(result, files);
 
     // Rapify file

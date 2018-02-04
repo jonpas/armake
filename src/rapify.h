@@ -28,6 +28,8 @@
 #ifdef _WIN32
 #include <io.h>
 #define isatty _isatty
+#else
+#include <unistd.h>
 #endif
 
 

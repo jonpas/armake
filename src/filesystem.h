@@ -36,8 +36,6 @@
 #define wcslens(s) (s==NULL?0:wcslen(s))
 #endif
 
-typedef intptr_t ssize_t;
-
 
 bool file_exists(char *path);
 bool file_exists_fuzzy(char *path);

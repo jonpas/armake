@@ -167,7 +167,7 @@ void get_temp_path(char *path, size_t bufsize) {
         // TODO Add command switch to remove old directories, windows apparently doesn't remove temp files at startup.
 #else
         strncpy(path, TEMPPATH, bufsize);
-        sprintf(path, "%s/armake/%ld/", path, getpid());
+        sprintf(path, "%s/armake/%d/", path, getpid());
 #endif
     } else {
         strcpy(path, args.temppath);

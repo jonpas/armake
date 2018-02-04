@@ -53,7 +53,6 @@ int wrp_add_dependency(char *filename, char *tempfolder_root) {
 
 
     if (!stricmp(strrchr(dest, '.'), ".rvmat")) {
-        int ret = rapify_file_get_files(dest, dest, tempfolder_root);
         return 0;  // Don't need rvmats to the list
     }
 
@@ -150,8 +149,8 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
     char buffer[2048];
     char dObjName[2048];
     float cellsize, elevation, dDir[3][4];
-    int len, texturegrid, terraingrid;
-    long noofmaterials;
+    int i, len, texturegrid, terraingrid;
+    long j, noofmaterials;
     short materialindex, materiallength;
     unsigned long dObjIndex;
 
@@ -171,7 +170,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
     debugf("Cellsize: %f\n", cellsize);
 
     // reading elevations
-    for (int i = 0; i < terraingrid * terraingrid; i++)
+    for (i = 0; i < terraingrid * terraingrid; i++)
     {
         fread(&elevation, 4, 1, wrp_map);
         //printf("Elevation: %f\n", elevation);
@@ -179,7 +178,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
 
     // credits go to Mikero for helping me figure out the RVMAT parts
     // reading rvmat index
-    for (int i = 0; i < texturegrid * texturegrid; i++)
+    for (i = 0; i < texturegrid * texturegrid; i++)
     {
         fread(&materialindex, 2, 1, wrp_map);
 //		printf("materialindex: %d\n", materialindex);
@@ -220,7 +219,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
     // Start reading objects...
     debugf("Parsing p3d objects...\n");
 
-    long int i = 0;
+    j = 0;
     for(;;)
     {
         fread(&dDir, sizeof(float), 3*4, wrp_map);
@@ -232,7 +231,7 @@ int wrp_parse_8WVR(FILE *wrp_map, char *tempfolder_root) {
         fread(dObjName,sizeof(char),len, wrp_map);
         dObjName[len] = 0;
         wrp_add_dependency(dObjName, tempfolder_root);
-        i++;
+        j++;
     }
     // should now be at eof
     debugf(" Found: %ld\n", i);
