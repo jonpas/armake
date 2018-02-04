@@ -260,7 +260,9 @@ int attempt_bis_bulk_binarize(char *source, char *addonprefix) {
         wchar_t wc_logfile[2048];
         char sanitized_addonprefix[2048];
         strcpy(sanitized_addonprefix, addonprefix);
-        for (size_t i = 0; i <= strlen(addonprefix); i++)
+
+        size_t i;
+        for (i = 0; i <= strlen(addonprefix); i++)
             sanitized_addonprefix[i] = (addonprefix[i] == '\\' || addonprefix[i] == '/') ? '_' : addonprefix[i];
         swprintf(wc_logfile, sizeof(wc_logfile), L"%ls\\armake_bin_%S.log", wc_temppath, sanitized_addonprefix);
 
@@ -413,10 +415,12 @@ int attempt_bis_binarize_rtm(char *source, char *target) {
     if (getenv("NATIVEBIN"))
         return -1;
 
-    for (int i = 0; i < strlen(source); i++)
+    int i;
+
+    for (i = 0; i < strlen(source); i++)
         source[i] = (source[i] == '/') ? '\\' : source[i];
 
-    for (int i = 0; i < strlen(target); i++)
+    for (i = 0; i < strlen(target); i++)
         target[i] = (target[i] == '/') ? '\\' : target[i];
 
 
@@ -592,10 +596,11 @@ int attempt_bis_binarize_wrp(char *source, char *target) {
     //if (getenv("NATIVEBIN"))
     //    return -1;
 
-    for (int i = 0; i < strlen(source); i++)
+    int i;
+    for (i = 0; i < strlen(source); i++)
         source[i] = (source[i] == '/') ? '\\' : source[i];
 
-    for (int i = 0; i < strlen(target); i++)
+    for (i = 0; i < strlen(target); i++)
         target[i] = (target[i] == '/') ? '\\' : target[i];
 
 
